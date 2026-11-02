@@ -1,0 +1,381 @@
+{
+  "name": "****",
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "****",
+      "name": "Xata",
+      "type": "@n8n/n8n-nodes-langchain.memoryXata",
+      "typeVersion": 1.4,
+      "position": [
+        280,
+        200
+      ],
+      "credentials": {
+        "xataApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "****",
+        "options": {}
+      },
+      "id": "****",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        -60
+      ],
+      "webhookId": "****"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message_text }}\nCurrent year: {{ $now.year }}",
+        "options": {
+          "systemMessage": "# **Role**  \n\nYou are an expert **Orchestrator Agent** responsible for efficiently managing and routing time-logging tasks to the appropriate sub-agents. You excel at **handling structured messages and plain text input, fuzzy matching for task names (including subtasks), ensuring cumulative logged hours are updated, and structuring outputs for clear readability.**  \n\n---\n\n# **Objective**  \n\nYour goal is to:  \n- **Identify and process time-logging tasks from structured or plain text input**  \n- **Ensure previously logged hours are summed with newly logged hours before updating tasks**  \n- **Recognize and handle task breakdowns**  \n- **Match task names against existing main tasks AND subtasks**  \n- **Provide structured outputs with clear confirmation prompts before creating or updating tasks**  \n- **Always return the task link after creation or update**  \n- **Always use code blocks for task summaries and task suggestions**\n\n---\n\n# **SOP (Standard Operating Procedure)**  \n\n### **1. Receive structured message or plain text input**  \n   - **For structured messages:** Extract the **date**, **task list**, and **newly logged hours**.  \n   - **For plain text input:** Parse format like \"Date - Task Name - Hours Client [Client Name] [Role] Comment: [Comment]\" to extract date, task name, hours, client, role, and comment.\n   - **If role is not specified, default to \"Maker\".**\n   - **If client is not specified, default to \"Internal\".**\n   - Identify if the message contains **task breakdowns (subtasks listed under a main task)**.  \n   - Identify if the message contains **task status (In Progress, Blocked, In Review)** be default set Done if status is not mentioned.\n\n### **2. Identify the user**  \n   - Use **Get Team Members** (with fuzzy matching) to retrieve the sender's **person_id**.  \n\n### **3. Identify main tasks and task breakdowns**  \n   - **Main Task:** Extracted as the primary task name (e.g., **\"Time Log Bot\"**).  \n   - **Task Breakdown (Subtasks):** Recognize subtasks within a main task (e.g., **\"Update architecture,\" \"Adjust prompts\"**).  \n   - **Sum total hours** for tasks that include breakdowns.  \n\n### **4. Match task names against existing main tasks AND subtasks**  \n   - Use **Get Assigned Tasks** with fuzzy matching to check if the **task name exists in main tasks or subtasks**.  \n   - **ALWAYS consider both main tasks and subtasks when performing fuzzy matching.**  \n   - **NEVER auto-select a single match - always present similar options to the user first.**\n\n### **5. Handle previously logged hours**  \n   - If a task exists, retrieve the **current logged hours** using **Get Assigned Tasks**.  \n   - **Add the newly logged hours to the previous total before updating.**  \n   - **If the role is specified as 'Manager', sum the previously logged hours for the Manager role with the new hours (do NOT sum with Maker hours). If the role is not specified or is 'Maker', sum with the Maker's previously logged hours.**  \n   - **Example:**  \n     - Previously logged: **20h**  \n     - New entry: **+2h**  \n     - ✅ **Updated total: 22h** (This is sent to the Update Task Agent).  \n\n### **6. Handle different task matching scenarios - ALWAYS show options first**  \n   - **CRITICAL: Never auto-select a task match. Always present options to the user first.**\n   - **CRITICAL: ALWAYS wrap task suggestions in code blocks using triple backticks.**\n   - **If similar matches are found (main tasks or subtasks):**  \n     - Always provide a list of possible matches **INSIDE A CODE BLOCK** and ask the user to select:  \n     ```\n     I couldn't find an exact match for \"[Task Name]\", but here are similar tasks:\n     1. [Task Name] - [Hours]h\n        - Client: [Client Name]\n        - Status: [Status]\n        - Type: [Main Task/Subtask of: Parent Task Name]\n        - Link: [Task Link]\n     \n     2. [Task Name] - [Hours]h\n        - Client: [Client Name]\n        - Status: [Status]\n        - Type: [Main Task/Subtask of: Parent Task Name]\n        - Link: [Task Link]\n     \n     Would you like to:\n     - Select one of the above? (Reply with number)\n     - Create a new task? (Reply with 'New')\n     - Create a new Subtask? (Reply with 'Sub')\n     ```  \n   - **If no similar tasks exist:**  \n     - Ask the user to confirm if they want to create a new task **INSIDE A CODE BLOCK** using the same format.\n\n### **7. Handle Task Breakdown (Subtasks within a Main Task)**  \n   - **Summarize total hours per main task** (sum subtask hours).  \n   - If a task has **subtasks**, prepare an update message including the breakdown details.  \n   - Example update message:  \n     ```\n     Task: Time Log Bot  \n     - Total Hours: 22h  \n     - Breakdown:  \n       - Update architecture - 1h  \n       - Adjust prompts - 1h  \n     ```\n   - Send this **summary to the Update Task Agent**.  \n\n### **8. Format the output based on the required structure:**  \n   - **For time-logging tasks, always display the Task Summary in a code block using triple backticks.**  \n     - For example:  \n     ```\n     ```\n     Task Summary:\n\n     1. Task Name: [Task Name]\n        - Client: [Client Name] ([Task UUID])\n        - Status: [Not Started / In Progress]\n        - Previously Logged Hours: [Hours] (Include only if applicable)\n        - New Logged Hours: [Hours]\n        - Updated Total Hours: [Hours]\n        - Breakdown: (Include only if applicable)\n          - [Subtask 1] - [Hours]\n          - [Subtask 2] - [Hours]\n        - Action: [Confirm update of logged hours] (Include only when applicable)\n        - Link: [Task Link] (Always include after creation or update)\n     ```\n     ```\n   - **For team member lists:**  \n     ```\n     Team Members:\n     - [Member 1]\n     - [Member 2]\n     - [Member 3]\n     ```\n   - **For error messages:**  \n     ```\n     Error:\n     [Detailed Error Message]\n     ```\n\n### **9. Ask for confirmation for each task individually**  \n   - **For each task, ask the user to confirm before proceeding:**  \n     - Always output the confirmation summary in a code block (triple backticks).\n     ```\n     I have identified the following task:\n     - Task Name: [Task Name]\n     - Date: [Extracted Date]\n     - Previously Logged Hours: [Hours] (If applicable)\n     - New Logged Hours: [Hours]\n     - Updated Total Hours: [Hours]\n     - Breakdown: (if applicable)\n       - [Subtask 1] - [Hours]\n       - [Subtask 2] - [Hours]\n     - Status: [Existing Task / New Task]\n     - Action: Confirm [Task Updating / New Task Creation] (Yes/No)\n     ```\n   - If the user **confirms**, proceed to the next step.  \n   - If the user **denies**, ask them to clarify the corrections before proceeding.  \n\n---\n\n### **Special handling for creating a new task when user selects \"New\" or \"Sub\"**\n   - **When user replies \"New\" to create a new main task:**\n     - Create the new main task directly with the provided information.\n   - **When user replies \"Sub\" to create a new subtask:**\n     - Prompt the user to select the parent (main) task from the main task list (from Get Assigned Tasks tool).\n     - Output the list of main tasks, each with its name and any identifying info, in a code block.\n     - Example prompt:\n     ```\n     Please select the parent (main) task under which this new subtask should be created:\n     1. [Main Task 1]\n     2. [Main Task 2]\n     ...\n     (Reply with the number of the parent task)\n     ```\n     - Only after the user selects, proceed to create the subtask under the selected main task.\n\n---\n\n# **Final Notes**  \n- **Always firstly retrieve employees list before getting assigned tasks**\n- ✅ **Sum new logged hours with previously logged hours before updating.**  \n- ✅ **Match task names against BOTH main tasks and subtasks—include all possibilities.**  \n- ✅ **NEVER auto-select matches—always present similar options first.**  \n- ✅ **Ensure structured output for easy readability.**  \n- ✅ **Always confirm updates before proceeding.**  \n- ✅ **Always return the task link after creation or update.**  \n- ✅ **Always use code blocks for task summaries and suggestions.**  \n- **Always use ids to communicate with sub-agents**"
+        }
+      },
+      "id": "****",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        540,
+        -60
+      ],
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.6
+        }
+      },
+      "id": "****",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        160,
+        200
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "get_assigned_tasks",
+        "description": "Use this tool to retrieve tasks and subtasks inside them assigned to specific team member by its user_id and the Role.",
+        "workflowId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        },
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n  \"Role\": \"Manager or Make\",\n  \"user_id\": \"The Id of the user\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        200
+      ],
+      "id": "****",
+      "name": "Get Assigned Tasks"
+    },
+    {
+      "parameters": {
+        "name": "get_team_members",
+        "description": "Use this tool for get team members.\nAlways use this tool to retireve actual ids of team members before updating and creating.",
+        "workflowId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        200
+      ],
+      "id": "****",
+      "name": "Get Team Members"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "id"
+        },
+        "text": "={{ $json.output.replace(/```[ \\t]*\\r?\\n+/, '```\\n') }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "****"
+            }
+          },
+          "mrkdwn": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        -60
+      ],
+      "id": "****",
+      "name": "Send Slack Message",
+      "webhookId": "****",
+      "credentials": {
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "create_subagent",
+        "description": "Use this sub-agent for creating task\nSend the task name, user_id, date with year, client(if it mentioned) and hours count , status(if it mentioned), role (manager or maker) comment, uuid of parent task (if it is a subtask)",
+        "workflowId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        },
+        "responsePropertyName": "output",
+        "fields": {
+          "values": [
+            {
+              "name": "sessionId",
+              "stringValue": "={{ $json.body.sessionId }}- create"
+            }
+          ]
+        },
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n  \"task_name\": \"Implement Login Feature\",\n  \"user_id\": \"****\",\n  \"date\": \"2025-06-08\",\n  \"client\": \"Internal\",\n  \"hours\": 2.0,\n  \"status\": \"In Progress\",\n  \"role\": \"Manager\",\n  \"comment\": \"Initial implementation of login with JWT auth.\",\n  \"parent_task_uuid\": \"****\"\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        200
+      ],
+      "id": "****",
+      "name": "Create Task SubAgent"
+    },
+    {
+      "parameters": {
+        "name": "update_task_subagent",
+        "description": "Use this tool for updating task\nSend task uuid,previous logged hours based on the Role (Maker or Manager), additional logged hours, Comment, Role and Status (status from the message if its specified, otherwise default to its actual task status)\nAlways send actual information about task",
+        "workflowId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        },
+        "responsePropertyName": "output",
+        "fields": {
+          "values": [
+            {
+              "name": "sessionId",
+              "stringValue": "={{ $json.body.sessionId }} - update"
+            }
+          ]
+        },
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n  \"task_uuid\": \"****\",\n  \"previous_logged_hours\": 4.5,\n  \"additional_logged_hours\": 0.5,\n  \"comment\": \"Refactored API endpoints for better performance.\",\n  \"role\": \"Maker\",\n  \"status\": \"Done\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        840,
+        200
+      ],
+      "id": "****",
+      "name": "Update Task SubAgent"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "****",
+            "user-agent": "Make/production",
+            "content-length": "97",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "****",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "****",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "traceparent": "****",
+            "tracestate": "****",
+            "x-datadog-parent-id": "****",
+            "x-datadog-sampling-priority": "0",
+            "x-datadog-tags": "****",
+            "x-datadog-trace-id": "****",
+            "x-forwarded-for": "****",
+            "x-forwarded-host": "****",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "****",
+            "x-is-trusted": "yes",
+            "x-real-ip": "****"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "Client": "****",
+            "sessionId": "****",
+            "channel_id": "****",
+            "message_text": " yes"
+          },
+          "webhookUrl": "****",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Xata": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Assigned Tasks": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Team Members": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task SubAgent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Task SubAgent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "****",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "****"
+  },
+  "id": "****",
+  "tags": [
+    {
+      "createdAt": "2025-06-04T21:56:05.564Z",
+      "updatedAt": "2025-06-04T21:56:05.564Z",
+      "id": "****",
+      "name": "****"
+    },
+    {
+      "createdAt": "2025-06-08T13:28:42.076Z",
+      "updatedAt": "2025-06-08T13:28:42.076Z",
+      "id": "****",
+      "name": "****"
+    }
+  ]
+}

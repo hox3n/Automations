@@ -1,0 +1,201 @@
+{
+  "name": "****",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "****",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "returnAll": true,
+        "simple": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "****",
+      "name": "Get Dream Team",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "user_id",
+              "value": "={{ $json.properties.Person.people[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "****",
+              "name": "user_name",
+              "value": "={{ $json.properties.Person.people[0].name }}",
+              "type": "string"
+            },
+            {
+              "id": "****",
+              "name": "user_email",
+              "value": "={{ $json.properties.Person.people[0].person.email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        440,
+        0
+      ],
+      "id": "****",
+      "name": "Pick Id and Email"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.user_name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "****",
+      "name": "Filter Out Empty Names"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "response",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "****",
+      "name": "Aggregate"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Dream Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Dream Team": {
+      "main": [
+        [
+          {
+            "node": "Pick Id and Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Id and Email": {
+      "main": [
+        [
+          {
+            "node": "Filter Out Empty Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Out Empty Names": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "****",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "****"
+  },
+  "id": "****",
+  "tags": [
+    {
+      "createdAt": "2025-06-04T21:56:05.564Z",
+      "updatedAt": "2025-06-04T21:56:05.564Z",
+      "id": "****",
+      "name": "****"
+    },
+    {
+      "createdAt": "2025-06-08T13:28:42.076Z",
+      "updatedAt": "2025-06-08T13:28:42.076Z",
+      "id": "****",
+      "name": "****"
+    }
+  ]
+}

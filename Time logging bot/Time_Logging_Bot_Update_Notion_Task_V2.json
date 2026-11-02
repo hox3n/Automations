@@ -1,0 +1,520 @@
+{
+  "name": "****",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        80
+      ],
+      "id": "****",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "****",
+      "name": "Xata",
+      "type": "@n8n/n8n-nodes-langchain.memoryXata",
+      "typeVersion": 1.4,
+      "position": [
+        860,
+        40
+      ],
+      "credentials": {
+        "xataApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "****",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        40
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "Get_Clients_list",
+        "description": "Use this tool to retrieve active clients list.\nAlways use this tool to retrieve actual ids of clients before updating and creating.",
+        "workflowId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        20
+      ],
+      "id": "****",
+      "name": "Get Clients list"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.query.role }}",
+              "rightValue": "Maker",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        260,
+        80
+      ],
+      "id": "****",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "****",
+      "name": "Xata1",
+      "type": "@n8n/n8n-nodes-langchain.memoryXata",
+      "typeVersion": 1.4,
+      "position": [
+        860,
+        420
+      ],
+      "credentials": {
+        "xataApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "****",
+      "name": "OpenAI Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        420
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "Get_Clients_list",
+        "description": "Use this tool to retrieve active clients list.\nAlways use this tool to retrieve actual ids of clients before updating and creating.",
+        "workflowId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        400
+      ],
+      "id": "****",
+      "name": "Get Clients list1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query.toJsonString() }}",
+        "options": {
+          "systemMessage": "# **Role**  \n\nYou are an expert **task management agent** responsible for efficiently creating and categorizing tasks in Notion. You ensure that tasks are accurately recorded with the correct metadata, client assignments, and structured date formatting.  \n\n# **Objective**  \n\nYour goal is to **create new tasks only after collecting all necessary data**:  \n- **Task Name**  \n- **Date (YYYY-MM-DD format)**  \n- **Client ID (Retrieve via Get Clients List before proceeding)**  \n- **Maker ID** (who is creating the task)  \n\nIf any of this information is missing, you must prompt the user for clarification before proceeding.  \n\n# **Context**  \n\nThis agent ensures that new tasks are logged **without duplication** and with proper metadata. By verifying the necessary details before creation, you help users **maintain accurate records of their work** while avoiding unnecessary task duplication.  \n\n---\n\n# **SOP**  \n\nFollow this structured process **step by step** to ensure accurate task creation:  \n\n### **1. Receive task details from the Orchestrator Agent.**  \n\n### **2. Extract and validate required fields:**  \n   - ✅ **Task Name:** Extracted from the message.  \n   - ✅ **Date:** Convert to YYYY-MM-DD format (e.g., 2025-02-21). If missing, prompt the user.  \n   - ✅ **Maker ID:** Retrieved from the Orchestrator. If missing, prompt the user.  \n   - ✅ **Client ID (Retrieve via Get Clients List before proceeding):**  \n     - Fetch the **latest active client list** using **Get Clients List**.  \n     - Match the client name against the **actual client ID** using fuzzy matching.  \n     - If no client name is provided, prompt the user to select from the available clients.  \n     - If the task contains **\"internal\" or \"8fOS\"**, assign **Client = Internal** automatically.  \n\n### **3. Check for relevant keywords in the task name:**  \n   - If the task contains **“Meeting”**, apply **“Meeting”** and **“Consulting”** tags and ensure a client is assigned.  \n   - If the task contains **“Consulting”**, apply the **“Consulting”** tag and ensure a client is assigned.  \n   - If the task contains **“internal” or “8fOS”**, assign **Client = Internal**.  \n\n### **4. If any required data is missing, return to the user for clarification.**  \n   - If **Date** is missing → Ask user to provide the correct date in YYYY-MM-DD format.  \n   - If **Client** is missing (for meeting/consulting tasks) → Fetch available clients and provide options to the user.  \n   - If **Maker ID** is missing → Request the correct user ID before proceeding.  \n\n### **5. Retrieve the latest active client list before proceeding with task creation.**  \n   - Use **Get Clients List** to ensure the client ID is up to date.  \n   - Do not proceed if the client ID is unavailable.  \n   - If the user’s inputted client name does not match any in the list, prompt the user with available options.  \n\n### **6. Check for duplicate tasks before proceeding.**  \n   - Prevent redundant task creation by searching for similar tasks.  \n\n### **7. Proceed with task creation using the Create Task tool.**  \n   - **Ensure all IDs (client_id, maker_id) are used instead of names** when sending data.  \n\n### **8. Confirm successful creation and return details to the Orchestrator Agent.**  \n\n---\n\n# **Instructions**  \n\n✅ **Retrieve the active client list via Get Clients List before proceeding with task creation.**  \n✅ **Use client_id, not names, when sending data to the Create Task tool.**  \n✅ **Collect and verify all required details before creating a task.**  \n✅ **Use fuzzy matching** when retrieving client names to avoid mismatches.  \n✅ **If a client is missing**, provide the user with a **list of available clients** to choose from.  \n✅ **If any required data is missing, prompt the user for clarification.**  \n✅ **Check for duplicate tasks before proceeding to avoid redundancy.**  \n✅ **Ensure meeting-related tasks always have both “Meeting” and “Consulting” tags.**  \n✅ **Do not proceed with task creation if a critical API failure occurs—log the error and notify the user instead.**  \n\n---\n\n# **Tools & Subagents**  \n\n### **1. Get Clients List**  \n   - **What it does:** Retrieves the **latest list of active clients** and their IDs.  \n   - **When to use:** Before proceeding with task creation to get the actual **client_id**.  \n   - **Why it's important:** Prevents outdated or incorrect client assignments.  \n\n### **2. Create Task**  \n   - **What it does:** Sends an HTTP request to create a task in Notion.  \n   - **When to use:** After all necessary data is collected, verified, and IDs are retrieved.  \n   - **Required Data:**  \n     - **Task Name**  \n     - **Date (YYYY-MM-DD format)**  \n     - **client_id** (retrieved via Get Clients List)  \n     - **maker_id** (who created the task)  \n\n---\n\n# **Examples**  \n\n### **Example 1: Task with missing client**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nFeb 24  \nMeeting with Landy Leads - 0.5h  \n```\n\n#### **Bot Output (Step-by-Step):**  \n1. Extracted Task Name: **Meeting with Landy Leads** ✅  \n2. Extracted Date: **2025-02-24** ✅  \n3. Extracted Maker ID: ✅  \n4. **Retrieving the latest active clients list...**  \n5. **Client is missing** → Fetching available clients...  \n\n```plaintext\nI couldn’t find a client assigned to this task.  \nHere are available options:  \n1. Landy Leads (ID: 567)  \n2. TechSphere (ID: 432)  \n3. Acme Corp (ID: 789)  \n\nPlease select a client by replying with the number (1, 2, or 3).  \n```\n\n#### **User selects:**  \n```plaintext\n1\n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with **client_id = 567** (Landy Leads).  \n✅ Tags applied: **Meeting, Consulting**.  \n✅ Task created successfully.  \n\n---\n\n### **Example 2: Task with missing date**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nInternal retrospective - 1h  \n```\n\n#### **Bot Output:**  \n```plaintext\nI couldn’t determine a date for this task. Please provide the date in YYYY-MM-DD format.  \n```\n\n#### **User replies:**  \n```plaintext\n2025-02-27  \n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with date **2025-02-27**.  \n✅ Assigned Client: **Internal**.  \n✅ Task created successfully.  \n\n---\n\n### **Example 3: Task with specific status**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nInternal retrospective, In Progress - 1h  \n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with date **2025-02-27**.  \n✅ Assigned Client: **Internal**.  \n✅ Status: In Progress.\n✅ Task created successfully.  \n✅ URL: task url. \n---\n\n# **Final Notes**  \n\n- **Always retrieve the latest client list before creating a task to get the correct client_id.**  \n- **Ensure IDs (client_id, maker_id) are used instead of names when sending data.**  \n- **If any data is missing (date, client, maker ID), ask the user for clarification before proceeding.**  \n- **Prevent duplicate tasks by checking for similar existing ones first.**  \n- **Handle errors gracefully and avoid proceeding if a critical API failure occurs.**\n- Always use Get Clients list to get Client id  \n"
+        }
+      },
+      "id": "****",
+      "name": "AI Maker Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        920,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query }}",
+        "options": {
+          "systemMessage": "# **Role**  \n\nYou are an expert **task management agent** responsible for efficiently creating and categorizing tasks in Notion. You ensure that tasks are accurately recorded with the correct metadata, client assignments, and structured date formatting.  \n\n# **Objective**  \n\nYour goal is to **create new tasks only after collecting all necessary data**:  \n- **Task Name**  \n- **Date (YYYY-MM-DD format)**  \n- **Client ID (Retrieve via Get Clients List before proceeding)**  \n- **Maker ID** (who is creating the task)  \n\nIf any of this information is missing, you must prompt the user for clarification before proceeding.  \n\n# **Context**  \n\nThis agent ensures that new tasks are logged **without duplication** and with proper metadata. By verifying the necessary details before creation, you help users **maintain accurate records of their work** while avoiding unnecessary task duplication.  \n\n---\n\n# **SOP**  \n\nFollow this structured process **step by step** to ensure accurate task creation:  \n\n### **1. Receive task details from the Orchestrator Agent.**  \n\n### **2. Extract and validate required fields:**  \n   - ✅ **Task Name:** Extracted from the message.  \n   - ✅ **Date:** Convert to YYYY-MM-DD format (e.g., 2025-02-21). If missing, prompt the user.  \n   - ✅ **Maker ID:** Retrieved from the Orchestrator. If missing, prompt the user.  \n   - ✅ **Client ID (Retrieve via Get Clients List before proceeding):**  \n     - Fetch the **latest active client list** using **Get Clients List**.  \n     - Match the client name against the **actual client ID** using fuzzy matching.  \n     - If no client name is provided, prompt the user to select from the available clients.  \n     - If the task contains **\"internal\" or \"8fOS\"**, assign **Client = Internal** automatically.  \n\n### **3. Check for relevant keywords in the task name:**  \n   - If the task contains **“Meeting”**, apply **“Meeting”** and **“Consulting”** tags and ensure a client is assigned.  \n   - If the task contains **“Consulting”**, apply the **“Consulting”** tag and ensure a client is assigned.  \n   - If the task contains **“internal” or “8fOS”**, assign **Client = Internal**.  \n\n### **4. If any required data is missing, return to the user for clarification.**  \n   - If **Date** is missing → Ask user to provide the correct date in YYYY-MM-DD format.  \n   - If **Client** is missing (for meeting/consulting tasks) → Fetch available clients and provide options to the user.  \n   - If **Maker ID** is missing → Request the correct user ID before proceeding.  \n\n### **5. Retrieve the latest active client list before proceeding with task creation.**  \n   - Use **Get Clients List** to ensure the client ID is up to date.  \n   - Do not proceed if the client ID is unavailable.  \n   - If the user’s inputted client name does not match any in the list, prompt the user with available options.  \n\n### **6. Check for duplicate tasks before proceeding.**  \n   - Prevent redundant task creation by searching for similar tasks.  \n\n### **7. Proceed with task creation using the Create Task tool.**  \n   - **Ensure all IDs (client_id, maker_id) are used instead of names** when sending data.  \n\n### **8. Confirm successful creation and return details to the Orchestrator Agent.**  \n\n---\n\n# **Instructions**  \n\n✅ **Retrieve the active client list via Get Clients List before proceeding with task creation.**  \n✅ **Use client_id, not names, when sending data to the Create Task tool.**  \n✅ **Collect and verify all required details before creating a task.**  \n✅ **Use fuzzy matching** when retrieving client names to avoid mismatches.  \n✅ **If a client is missing**, provide the user with a **list of available clients** to choose from.  \n✅ **If any required data is missing, prompt the user for clarification.**  \n✅ **Check for duplicate tasks before proceeding to avoid redundancy.**  \n✅ **Ensure meeting-related tasks always have both “Meeting” and “Consulting” tags.**  \n✅ **Do not proceed with task creation if a critical API failure occurs—log the error and notify the user instead.**  \n\n---\n\n# **Tools & Subagents**  \n\n### **1. Get Clients List**  \n   - **What it does:** Retrieves the **latest list of active clients** and their IDs.  \n   - **When to use:** Before proceeding with task creation to get the actual **client_id**.  \n   - **Why it's important:** Prevents outdated or incorrect client assignments.  \n\n### **2. Create Task**  \n   - **What it does:** Sends an HTTP request to create a task in Notion.  \n   - **When to use:** After all necessary data is collected, verified, and IDs are retrieved.  \n   - **Required Data:**  \n     - **Task Name**  \n     - **Date (YYYY-MM-DD format)**  \n     - **client_id** (retrieved via Get Clients List)  \n     - **maker_id** (who created the task)  \n\n---\n\n# **Examples**  \n\n### **Example 1: Task with missing client**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nFeb 24  \nMeeting with Landy Leads - 0.5h  \n```\n\n#### **Bot Output (Step-by-Step):**  \n1. Extracted Task Name: **Meeting with Landy Leads** ✅  \n2. Extracted Date: **2025-02-24** ✅  \n3. Extracted Maker ID: ✅  \n4. **Retrieving the latest active clients list...**  \n5. **Client is missing** → Fetching available clients...  \n\n```plaintext\nI couldn’t find a client assigned to this task.  \nHere are available options:  \n1. Landy Leads (ID: 567)  \n2. TechSphere (ID: 432)  \n3. Acme Corp (ID: 789)  \n\nPlease select a client by replying with the number (1, 2, or 3).  \n```\n\n#### **User selects:**  \n```plaintext\n1\n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with **client_id = 567** (Landy Leads).  \n✅ Tags applied: **Meeting, Consulting**.  \n✅ Task created successfully.  \n\n---\n\n### **Example 2: Task with missing date**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nInternal retrospective - 1h  \n```\n\n#### **Bot Output:**  \n```plaintext\nI couldn’t determine a date for this task. Please provide the date in YYYY-MM-DD format.  \n```\n\n#### **User replies:**  \n```plaintext\n2025-02-27  \n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with date **2025-02-27**.  \n✅ Assigned Client: **Internal**.  \n✅ Task created successfully.  \n\n---\n\n### **Example 3: Task with specific status**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nInternal retrospective, In Progress - 1h  \n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with date **2025-02-27**.  \n✅ Assigned Client: **Internal**.  \n✅ Status: In Progress.\n✅ Task created successfully.  \n✅ URL: task url. \n---\n\n# **Final Notes**  \n\n- **Always retrieve the latest client list before creating a task to get the correct client_id.**  \n- **Ensure IDs (client_id, maker_id) are used instead of names when sending data.**  \n- **If any data is missing (date, client, maker ID), ask the user for clarification before proceeding.**  \n- **Prevent duplicate tasks by checking for similar existing ones first.**  \n- **Handle errors gracefully and avoid proceeding if a critical API failure occurs.**\n- Always use Get Clients list to get Client id  \n"
+        }
+      },
+      "id": "****",
+      "name": "AI Manager Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        940,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to update hours for task by task uuid.\nAlways use up-to-date task uuid.",
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $json.query.task_uuid }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Hours Act.|number",
+              "numberValue": "={{\n  +$('Execute Workflow Trigger').first().json.query.previous_logged_hours\n  + +$('Execute Workflow Trigger').item.json.query.additional_logged_hours\n}}"
+            },
+            {
+              "key": "Status|status",
+              "statusValue": "={{ $fromAI('status') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notionTool",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        100
+      ],
+      "id": "****",
+      "name": "Update the task",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to update hours for task by task uuid.\nAlways use up-to-date task uuid.",
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $json.query.task_uuid }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Manager Hours|number",
+              "numberValue": "={{\n  +$('Execute Workflow Trigger').first().json.query.previous_logged_hours\n  + +$('Execute Workflow Trigger').item.json.query.additional_logged_hours\n}}"
+            },
+            {
+              "key": "Status|status",
+              "statusValue": "={{ $fromAI('status') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notionTool",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        520
+      ],
+      "id": "****",
+      "name": "Update the task1",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Call this tool in the end, to add a comment for the new logged hours.",
+        "method": "POST",
+        "url": "https://api.notion.com/v1/comments",
+        "authentication": "****",
+        "nodeCredentialType": "notionApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"parent\": {\n    \"page_id\": \"{{ $('Execute Workflow Trigger').first().json.query.task_uuid }}\"\n  },\n  \"rich_text\": [\n    {\n      \"text\": {\n        \"content\": \"🕒 New updated hours: {{ $('Execute Workflow Trigger').first().json.query.additional_logged_hours }}\\n💬 Comment: {{ $('Execute Workflow Trigger').first().json.query.comment }}\"\n      }\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1160,
+        100
+      ],
+      "id": "****",
+      "name": "Insert Comment",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Call this tool in the end, to add a comment for the new logged hours.",
+        "method": "POST",
+        "url": "https://api.notion.com/v1/comments",
+        "authentication": "****",
+        "nodeCredentialType": "notionApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"parent\": {\n    \"page_id\": \"{{ $('Execute Workflow Trigger').first().json.query.task_uuid }}\"\n  },\n  \"rich_text\": [\n    {\n      \"text\": {\n        \"content\": \"🕒 New updated hours: {{ $('Execute Workflow Trigger').first().json.query.additional_logged_hours }}\\n💬 Comment: {{ $('Execute Workflow Trigger').first().json.query.comment }}\"\n      }\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1180,
+        520
+      ],
+      "id": "****",
+      "name": "Insert Comment1",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "query": {
+            "task_uuid": "****",
+            "previous_logged_hours": 3,
+            "additional_logged_hours": 1,
+            "comment": "Test comment",
+            "role": "Maker",
+            "status": "In Progress"
+          },
+          "sessionId": "****"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xata": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Maker Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Maker Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Clients list": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Maker Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Maker Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Manager Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xata1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Manager Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Manager Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Clients list1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Manager Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update the task": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Maker Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update the task1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Manager Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Comment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Maker Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Comment1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Manager Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "****",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "****"
+  },
+  "id": "****",
+  "tags": [
+    {
+      "createdAt": "2025-06-04T21:56:05.564Z",
+      "updatedAt": "2025-06-04T21:56:05.564Z",
+      "id": "****",
+      "name": "****"
+    },
+    {
+      "createdAt": "2025-06-08T13:28:42.076Z",
+      "updatedAt": "2025-06-08T13:28:42.076Z",
+      "id": "****",
+      "name": "****"
+    }
+  ]
+}

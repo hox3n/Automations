@@ -1,0 +1,308 @@
+{
+  "name": "****",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -120
+      ],
+      "id": "****",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Read all items, build a Map of minimal objects & collect all subtask IDs\nconst items = $input.all();\nconst lookup = new Map();\nconst allSubtaskIds = new Set();\n\nfor (const { json: orig } of items) {\n  const p = orig.properties || {};\n  const id = orig.id;\n\n  // Gather this page’s subtask IDs\n  const subIds = (p[\"Sub-tasks\"]?.relation || []).map(r => r.id);\n  subIds.forEach(allSubtaskIds.add, allSubtaskIds);\n\n  // Store minimal object in the map, include an empty subtasks array\n  lookup.set(id, {\n    page_id:            id,\n    subIds,                                        // temp list for attachment\n    manager_id:         p.Manager?.people?.[0]?.id ?? null,\n    manager_name:       p.Manager?.people?.[0]?.name ?? null,\n    manager_hours:      p[\"Manager Hours\"]?.number ?? null,   // ← captured here\n    created_by_id:      p[\"Created by\"]?.created_by?.id    ?? null,\n    created_by_name:    p[\"Created by\"]?.created_by?.name  ?? null,\n    hours_estimated:    p[\"Hours Est.\"]?.number            ?? null,\n    hours_actual:       p[\"Hours Act.\"]?.number            ?? null,\n    client_formatted:   p[\"Client Formatted\"]?.formula?.string ?? null,\n    type_labels:        (p.Type?.multi_select || []).map(ms => ms.name),\n    task_name:          p[\"Task name\"]?.title?.[0]?.plain_text ?? null,\n    status:             p.Status?.status?.name             ?? null,\n    time_diff:          p[\"Time Diff\"]?.formula?.number    ?? null,\n    remaining_hours:    p[\"Remaining Hours\"]?.formula?.number ?? null,\n    maker_id:           p.Maker?.people?.[0]?.id           ?? null,\n    maker_name:         p.Maker?.people?.[0]?.name         ?? null,\n    url:                orig.url                           ?? null,\n    subtasks: []                                  // will fill below\n  });\n}\n\n// 2. Attach subtasks in one pass over the map\nfor (const obj of lookup.values()) {\n  for (const sid of obj.subIds) {\n    const child = lookup.get(sid);\n    if (child) obj.subtasks.push(child);\n  }\n  delete obj.subIds; // clean up temp field\n}\n\n// 3. Filter out only top-level tasks and shape final output\nreturn Array.from(lookup.values())\n  .filter(o => !allSubtaskIds.has(o.page_id))\n  .map(o => ({\n    json: {\n      task_id:               o.page_id,\n      task_manager_id:       o.manager_id,\n      task_manager_name:     o.manager_name,\n      task_manager_hours:    o.manager_hours,   // ← emitted here\n      task_created_by_id:    o.created_by_id,\n      task_created_by_name:  o.created_by_name,\n      task_hours_estimated:  o.hours_estimated,\n      task_hours_actual:     o.hours_actual,\n      task_client:           o.client_formatted,\n      task_types:            o.type_labels.length\n                                ? o.type_labels.join(', ')\n                                : null,\n      task_name:             o.task_name,\n      task_status:           o.status,\n      task_time_diff:        o.time_diff,\n      task_remaining_hours:  o.remaining_hours,\n      task_maker_id:         o.maker_id,\n      task_maker_name:       o.maker_name,\n      task_url:              o.url,\n      subtasks: o.subtasks.map(s => ({\n        task_id:               s.page_id,\n        task_manager_id:       s.manager_id,\n        task_manager_name:     s.manager_name,\n        task_manager_hours:    s.manager_hours,  // ← and here\n        task_created_by_id:    s.created_by_id,\n        task_created_by_name:  s.created_by_name,\n        task_hours_estimated:  s.hours_estimated,\n        task_hours_actual:     s.hours_actual,\n        task_client:           s.client_formatted,\n        task_types:            s.type_labels.length\n                                  ? s.type_labels.join(', ')\n                                  : null,\n        task_name:             s.task_name,\n        task_status:           s.status,\n        task_time_diff:        s.time_diff,\n        task_remaining_hours:  s.remaining_hours,\n        task_maker_id:         s.maker_id,\n        task_maker_name:       s.maker_name,\n        task_url:              s.url\n      }))\n    }\n  }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -120
+      ],
+      "id": "****",
+      "name": "Post process"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "response",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        740,
+        -120
+      ],
+      "id": "****",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "limit": 100,
+        "simple": false,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Task name|title",
+              "condition": "is_not_empty"
+            },
+            {
+              "key": "Status|status",
+              "condition": "does_not_equal",
+              "statusValue": "Done"
+            },
+            {
+              "key": "Status|status",
+              "condition": "does_not_equal",
+              "statusValue": "Cancelled"
+            },
+            {
+              "key": "Manager|people",
+              "condition": "contains",
+              "peopleValue": "={{ \n$('Execute Workflow Trigger').first().json.query.user_id \n}}"
+            }
+          ]
+        },
+        "options": {
+          "sort": {
+            "sortValue": [
+              {
+                "timestamp": true,
+                "key": "last_edited_time",
+                "direction": "descending"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        100,
+        -280
+      ],
+      "id": "****",
+      "name": "Get Manager Tasks",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "limit": 100,
+        "simple": false,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Maker|people",
+              "condition": "contains",
+              "peopleValue": "={{ \n$('Execute Workflow Trigger').first().json.query.user_id \n}}"
+            },
+            {
+              "key": "Task name|title",
+              "condition": "is_not_empty"
+            },
+            {
+              "key": "Status|status",
+              "condition": "does_not_equal",
+              "statusValue": "Done"
+            },
+            {
+              "key": "Status|status",
+              "condition": "does_not_equal",
+              "statusValue": "Cancelled"
+            }
+          ]
+        },
+        "options": {
+          "sort": {
+            "sortValue": [
+              {
+                "timestamp": true,
+                "key": "last_edited_time",
+                "direction": "descending"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        100,
+        0
+      ],
+      "id": "****",
+      "name": "Get Maker Tasks",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.query.Role }}",
+              "rightValue": "Manager",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -260,
+        -120
+      ],
+      "id": "****",
+      "name": "Is Manager"
+    }
+  ],
+  "pinData": {
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "query": {
+            "Role": "Maker",
+            "user_id": "****"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post process": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Maker Tasks": {
+      "main": [
+        [
+          {
+            "node": "Post process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Manager Tasks": {
+      "main": [
+        [
+          {
+            "node": "Post process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Manager": {
+      "main": [
+        [
+          {
+            "node": "Get Manager Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Maker Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "****",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "****"
+  },
+  "id": "****",
+  "tags": [
+    {
+      "createdAt": "2025-06-04T21:56:05.564Z",
+      "updatedAt": "2025-06-04T21:56:05.564Z",
+      "id": "****",
+      "name": "****"
+    },
+    {
+      "createdAt": "2025-06-08T13:28:42.076Z",
+      "updatedAt": "2025-06-08T13:28:42.076Z",
+      "id": "****",
+      "name": "****"
+    }
+  ]
+}

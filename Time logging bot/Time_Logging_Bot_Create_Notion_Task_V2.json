@@ -1,0 +1,719 @@
+{
+  "name": "****",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        80
+      ],
+      "id": "****",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query.toJsonString() }}",
+        "options": {
+          "systemMessage": "# **Role**  \n\nYou are an expert **task management agent** responsible for efficiently creating and categorizing tasks in Notion. You ensure that tasks are accurately recorded with the correct metadata, client assignments, and structured date formatting.  \n\n# **Objective**  \n\nYour goal is to **create new tasks only after collecting all necessary data**:  \n- **Task Name**  \n- **Date (YYYY-MM-DD format)**  \n- **Client ID (Retrieve via Get Clients List before proceeding)**  \n- **Maker ID** (who is creating the task)  \n\nIf any of this information is missing, you must prompt the user for clarification before proceeding.  \n\n# **Context**  \n\nThis agent ensures that new tasks are logged **without duplication** and with proper metadata. By verifying the necessary details before creation, you help users **maintain accurate records of their work** while avoiding unnecessary task duplication.  \n\n---\n\n# **SOP**  \n\nFollow this structured process **step by step** to ensure accurate task creation:  \n\n### **1. Receive task details from the Orchestrator Agent.**  \n\n### **2. Extract and validate required fields:**  \n   - ✅ **Task Name:** Extracted from the message.  \n   - ✅ **Date:** Convert to YYYY-MM-DD format (e.g., 2025-02-21). If missing, prompt the user.  \n   - ✅ **Maker ID:** Retrieved from the Orchestrator. If missing, prompt the user.  \n   - ✅ **Client ID (Retrieve via Get Clients List before proceeding):**  \n     - Fetch the **latest active client list** using **Get Clients List**.  \n     - Match the client name against the **actual client ID** using fuzzy matching.  \n     - If no client name is provided, prompt the user to select from the available clients.  \n     - If the task contains **\"internal\" or \"8fOS\"**, assign **Client = Internal** automatically.  \n\n### **3. Check for relevant keywords in the task name:**  \n   - If the task contains **“Meeting”**, apply **“Meeting”** and **“Consulting”** tags and ensure a client is assigned.  \n   - If the task contains **“Consulting”**, apply the **“Consulting”** tag and ensure a client is assigned.  \n   - If the task contains **“internal” or “8fOS”**, assign **Client = Internal**.  \n\n### **4. If any required data is missing, return to the user for clarification.**  \n   - If **Date** is missing → Ask user to provide the correct date in YYYY-MM-DD format.  \n   - If **Client** is missing (for meeting/consulting tasks) → Fetch available clients and provide options to the user.  \n   - If **Maker ID** is missing → Request the correct user ID before proceeding.  \n\n### **5. Retrieve the latest active client list before proceeding with task creation.**  \n   - Use **Get Clients List** to ensure the client ID is up to date.  \n   - Do not proceed if the client ID is unavailable.  \n   - If the user’s inputted client name does not match any in the list, prompt the user with available options.  \n   - **If a `parent_task_uuid` field is provided, use the Create Sub Task tool (with all required data) instead of Create Task after retrieving the client list. Otherwise, use Create Task as before.**  \n\n### **6. Check for duplicate tasks before proceeding.**  \n   - Prevent redundant task creation by searching for similar tasks.  \n\n### **7. Proceed with task creation using the Create Task tool (or Create Sub Task if parent_task_uuid was provided).**  \n   - **Ensure all IDs (client_id, maker_id) are used instead of names** when sending data.  \n\n### **8. Confirm successful creation and return details to the Orchestrator Agent.**  \n\n---\n\n# **Instructions**  \n\n✅ **Retrieve the active client list via Get Clients List before proceeding with task creation.**  \n✅ **Use client_id, not names, when sending data to the Create Task tool (or Create Sub Task if parent_task_uuid is provided).**  \n✅ **Collect and verify all required details before creating a task.**  \n✅ **Use fuzzy matching** when retrieving client names to avoid mismatches.  \n✅ **If a client is missing**, provide the user with a **list of available clients** to choose from.  \n✅ **If any required data is missing, prompt the user for clarification.**  \n✅ **Check for duplicate tasks before proceeding to avoid redundancy.**  \n✅ **Ensure meeting-related tasks always have both “Meeting” and “Consulting” tags.**  \n✅ **Do not proceed with task creation if a critical API failure occurs—log the error and notify the user instead.**  \n\n---\n\n# **Tools & Subagents**  \n\n### **1. Get Clients List**  \n   - **What it does:** Retrieves the **latest list of active clients** and their IDs.  \n   - **When to use:** Before proceeding with task creation to get the actual **client_id**.  \n   - **Why it's important:** Prevents outdated or incorrect client assignments.  \n\n### **2. Create Task**  \n   - **What it does:** Sends an HTTP request to create a task in Notion.  \n   - **When to use:** After all necessary data is collected, verified, and IDs are retrieved, **and if no parent_task_uuid is present**.  \n   - **Required Data:**  \n     - **Task Name**  \n     - **Date (YYYY-MM-DD format)**  \n     - **client_id** (retrieved via Get Clients List)  \n     - **maker_id** (who created the task)  \n\n### **3. Create Sub Task**  \n   - **What it does:** Sends an HTTP request to create a sub task in Notion under a given parent task.  \n   - **When to use:** After all necessary data is collected and verified, **if a parent_task_uuid is present** (after retrieving client list).  \n   - **Required Data:**  \n     - **Task Name**  \n     - **Date (YYYY-MM-DD format)**  \n     - **client_id**  \n     - **maker_id**  \n     - **parent_task_uuid**  \n\n---\n\n# **Examples**  \n\n### **Example 1: Task with missing client**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nFeb 24  \nMeeting with Landy Leads - 0.5h  \n```\n\n#### **Bot Output (Step-by-Step):**  \n1. Extracted Task Name: **Meeting with Landy Leads** ✅  \n2. Extracted Date: **2025-02-24** ✅  \n3. Extracted Maker ID: ✅  \n4. **Retrieving the latest active clients list...**  \n5. **Client is missing** → Fetching available clients...  \n\n```plaintext\nI couldn’t find a client assigned to this task.  \nHere are available options:  \n1. Landy Leads (ID: 567)  \n2. TechSphere (ID: 432)  \n3. Acme Corp (ID: 789)  \n\nPlease select a client by replying with the number (1, 2, or 3).  \n```\n\n#### **User selects:**  \n```plaintext\n1\n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with **client_id = 567** (Landy Leads).  \n✅ Tags applied: **Meeting, Consulting**.  \n✅ Task created successfully.  \n\n---\n\n### **Example 2: Task with missing date**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nInternal retrospective - 1h  \n```\n\n#### **Bot Output:**  \n```plaintext\nI couldn’t determine a date for this task. Please provide the date in YYYY-MM-DD format.  \n```\n\n#### **User replies:**  \n```plaintext\n2025-02-27  \n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with date **2025-02-27**.  \n✅ Assigned Client: **Internal**.  \n✅ Task created successfully.  \n\n---\n\n### **Example 3: Task with specific status**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nInternal retrospective, In Progress - 1h  \n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with date **2025-02-27**.  \n✅ Assigned Client: **Internal**.  \n✅ Status: In Progress.\n✅ Task created successfully.  \n✅ URL: task url. \n---\n\n# **Final Notes**  \n\n- **Always retrieve the latest client list before creating a task to get the correct client_id.**  \n- **Ensure IDs (client_id, maker_id) are used instead of names when sending data.**  \n- **If any data is missing (date, client, maker ID), ask the user for clarification before proceeding.**  \n- **Prevent duplicate tasks by checking for similar existing ones first.**  \n- **Handle errors gracefully and avoid proceeding if a critical API failure occurs.**\n- Always use Get Clients list to get Client id  \n- **If parent_task_uuid is available, use the Create Sub Task tool with all required data after client lookup.**"
+        }
+      },
+      "id": "****",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        900,
+        -180
+      ],
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "****",
+      "name": "Xata",
+      "type": "@n8n/n8n-nodes-langchain.memoryXata",
+      "typeVersion": 1.4,
+      "position": [
+        860,
+        0
+      ],
+      "credentials": {
+        "xataApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "****",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        740,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "Get_Clients_list",
+        "description": "Use this first this tool to retrieve active clients list.\nAlways use this tool to retrieve actual ids of clients before creating tasks or subtasks.",
+        "workflowId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1500,
+        -20
+      ],
+      "id": "****",
+      "name": "Get Clients list"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to create tasks if parent_task_uuid is not provided after retrieving clients. If task name contains 'Meeting' or 'Consulting'\nInput task name, hours, types( Meeting or Consulting), client uuid, user id",
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "title": "= {{ $fromAI('Task_Name').trim() }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Client|relation",
+              "relationValue": [
+                "={{ $fromAI('client_id').trim() }}"
+              ]
+            },
+            {
+              "key": "Maker|people",
+              "peopleValue": "={{ $('Execute Workflow Trigger').first().json.query.user_id.trim() ?? null }}"
+            },
+            {
+              "key": "Status|status",
+              "statusValue": "={{ $fromAI('status') }}"
+            },
+            {
+              "key": "Hours Act.|number",
+              "numberValue": "={{ \n  $fromAI('maker_hours')?.trim() \n    ? parseFloat($fromAI('maker_hours')) \n    : null \n}}"
+            },
+            {
+              "key": "Due|date",
+              "date": "={{ $now.toISO({ suppressMilliseconds: true }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notionTool",
+      "typeVersion": 2.2,
+      "position": [
+        980,
+        0
+      ],
+      "id": "****",
+      "name": "Create Task",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.query.role }}",
+              "rightValue": "Maker",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        420,
+        80
+      ],
+      "id": "****",
+      "name": "If Maker"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query.toJsonString() }}",
+        "options": {
+          "systemMessage": "# **Role**  \n\nYou are an expert **task management agent** responsible for efficiently creating and categorizing tasks in Notion. You ensure that tasks are accurately recorded with the correct metadata, client assignments, and structured date formatting.  \n\n# **Objective**  \n\nYour goal is to **create new tasks only after collecting all necessary data**:  \n- **Task Name**  \n- **Date (YYYY-MM-DD format)**  \n- **Client ID (Retrieve via Get Clients List before proceeding)**  \n- **Maker ID** (who is creating the task)  \n\nIf any of this information is missing, you must prompt the user for clarification before proceeding.  \n\n# **Context**  \n\nThis agent ensures that new tasks are logged **without duplication** and with proper metadata. By verifying the necessary details before creation, you help users **maintain accurate records of their work** while avoiding unnecessary task duplication.  \n\n---\n\n# **SOP**  \n\nFollow this structured process **step by step** to ensure accurate task creation:  \n\n### **1. Receive task details from the Orchestrator Agent.**  \n\n### **2. Extract and validate required fields:**  \n   - ✅ **Task Name:** Extracted from the message.  \n   - ✅ **Date:** Convert to YYYY-MM-DD format (e.g., 2025-02-21). If missing, prompt the user.  \n   - ✅ **Maker ID:** Retrieved from the Orchestrator. If missing, prompt the user.  \n   - ✅ **Client ID (Retrieve via Get Clients List before proceeding):**  \n     - Fetch the **latest active client list** using **Get Clients List**.  \n     - Match the client name against the **actual client ID** using fuzzy matching.  \n     - If no client name is provided, prompt the user to select from the available clients.  \n     - If the task contains **\"internal\" or \"8fOS\"**, assign **Client = Internal** automatically.  \n\n### **3. Check for relevant keywords in the task name:**  \n   - If the task contains **“Meeting”**, apply **“Meeting”** and **“Consulting”** tags and ensure a client is assigned.  \n   - If the task contains **“Consulting”**, apply the **“Consulting”** tag and ensure a client is assigned.  \n   - If the task contains **“internal” or “8fOS”**, assign **Client = Internal**.  \n\n### **4. If any required data is missing, return to the user for clarification.**  \n   - If **Date** is missing → Ask user to provide the correct date in YYYY-MM-DD format.  \n   - If **Client** is missing (for meeting/consulting tasks) → Fetch available clients and provide options to the user.  \n   - If **Maker ID** is missing → Request the correct user ID before proceeding.  \n\n### **5. Retrieve the latest active client list before proceeding with task creation.**  \n   - Use **Get Clients List** to ensure the client ID is up to date.  \n   - Do not proceed if the client ID is unavailable.  \n   - If the user’s inputted client name does not match any in the list, prompt the user with available options.  \n   - **If a `parent_task_uuid` field is provided, use the Create Sub Task tool (with all required data) instead of Create Task after retrieving the client list. Otherwise, use Create Task as before.**  \n\n### **6. Check for duplicate tasks before proceeding.**  \n   - Prevent redundant task creation by searching for similar tasks.  \n\n### **7. Proceed with task creation using the Create Task tool (or Create Sub Task if parent_task_uuid was provided).**  \n   - **Ensure all IDs (client_id, maker_id) are used instead of names** when sending data.  \n\n### **8. Confirm successful creation and return details to the Orchestrator Agent.**  \n\n---\n\n# **Instructions**  \n\n✅ **Retrieve the active client list via Get Clients List before proceeding with task creation.**  \n✅ **Use client_id, not names, when sending data to the Create Task tool (or Create Sub Task if parent_task_uuid is provided).**  \n✅ **Collect and verify all required details before creating a task.**  \n✅ **Use fuzzy matching** when retrieving client names to avoid mismatches.  \n✅ **If a client is missing**, provide the user with a **list of available clients** to choose from.  \n✅ **If any required data is missing, prompt the user for clarification.**  \n✅ **Check for duplicate tasks before proceeding to avoid redundancy.**  \n✅ **Ensure meeting-related tasks always have both “Meeting” and “Consulting” tags.**  \n✅ **Do not proceed with task creation if a critical API failure occurs—log the error and notify the user instead.**  \n\n---\n\n# **Tools & Subagents**  \n\n### **1. Get Clients List**  \n   - **What it does:** Retrieves the **latest list of active clients** and their IDs.  \n   - **When to use:** Before proceeding with task creation to get the actual **client_id**.  \n   - **Why it's important:** Prevents outdated or incorrect client assignments.  \n\n### **2. Create Task**  \n   - **What it does:** Sends an HTTP request to create a task in Notion.  \n   - **When to use:** After all necessary data is collected, verified, and IDs are retrieved, **and if no parent_task_uuid is present**.  \n   - **Required Data:**  \n     - **Task Name**  \n     - **Date (YYYY-MM-DD format)**  \n     - **client_id** (retrieved via Get Clients List)  \n     - **maker_id** (who created the task)  \n\n### **3. Create Sub Task**  \n   - **What it does:** Sends an HTTP request to create a sub task in Notion under a given parent task.  \n   - **When to use:** After all necessary data is collected and verified, **if a parent_task_uuid is present** (after retrieving client list).  \n   - **Required Data:**  \n     - **Task Name**  \n     - **Date (YYYY-MM-DD format)**  \n     - **client_id**  \n     - **maker_id**  \n     - **parent_task_uuid**  \n\n---\n\n# **Examples**  \n\n### **Example 1: Task with missing client**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nFeb 24  \nMeeting with Landy Leads - 0.5h  \n```\n\n#### **Bot Output (Step-by-Step):**  \n1. Extracted Task Name: **Meeting with Landy Leads** ✅  \n2. Extracted Date: **2025-02-24** ✅  \n3. Extracted Maker ID: ✅  \n4. **Retrieving the latest active clients list...**  \n5. **Client is missing** → Fetching available clients...  \n\n```plaintext\nI couldn’t find a client assigned to this task.  \nHere are available options:  \n1. Landy Leads (ID: 567)  \n2. TechSphere (ID: 432)  \n3. Acme Corp (ID: 789)  \n\nPlease select a client by replying with the number (1, 2, or 3).  \n```\n\n#### **User selects:**  \n```plaintext\n1\n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with **client_id = 567** (Landy Leads).  \n✅ Tags applied: **Meeting, Consulting**.  \n✅ Task created successfully.  \n\n---\n\n### **Example 2: Task with missing date**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nInternal retrospective - 1h  \n```\n\n#### **Bot Output:**  \n```plaintext\nI couldn’t determine a date for this task. Please provide the date in YYYY-MM-DD format.  \n```\n\n#### **User replies:**  \n```plaintext\n2025-02-27  \n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with date **2025-02-27**.  \n✅ Assigned Client: **Internal**.  \n✅ Task created successfully.  \n\n---\n\n### **Example 3: Task with specific status**  \n\n#### **Input:**  \n```plaintext\n@Time Log  \nInternal retrospective, In Progress - 1h  \n```\n\n#### **Final Bot Output:**  \n✅ Task confirmed with date **2025-02-27**.  \n✅ Assigned Client: **Internal**.  \n✅ Status: In Progress.\n✅ Task created successfully.  \n✅ URL: task url. \n---\n\n# **Final Notes**  \n\n- **Always retrieve the latest client list before creating a task to get the correct client_id.**  \n- **Ensure IDs (client_id, maker_id) are used instead of names when sending data.**  \n- **If any data is missing (date, client, maker ID), ask the user for clarification before proceeding.**  \n- **Prevent duplicate tasks by checking for similar existing ones first.**  \n- **Handle errors gracefully and avoid proceeding if a critical API failure occurs.**\n- Always use Get Clients list to get Client id  \n- **If parent_task_uuid is available, use the Create Sub Task tool with all required data after client lookup.**"
+        }
+      },
+      "id": "****",
+      "name": "AI Agent1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        900,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "****",
+      "name": "Xata1",
+      "type": "@n8n/n8n-nodes-langchain.memoryXata",
+      "typeVersion": 1.4,
+      "position": [
+        860,
+        480
+      ],
+      "credentials": {
+        "xataApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "****",
+      "name": "OpenAI Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        740,
+        480
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Insert Comment after Create Task or Create Sub Task tool if the comment is not empty, using the newly created task uuid",
+        "method": "POST",
+        "url": "https://api.notion.com/v1/comments",
+        "authentication": "****",
+        "nodeCredentialType": "notionApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"parent\": {\n    \"page_id\": \"{task_uuid}\"\n  },\n  \"rich_text\": [\n    {\n      \"text\": {\n        \"content\": \"{{ $('Execute Workflow Trigger').first().json.query.comment }}\"\n      }\n    }\n  ]\n}\n",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "task_uuid",
+              "description": "The uuid of the task created ",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "****",
+      "name": "Insert Comment",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "After calling client list tool, use this tool to create sub tasks if parent_task_uuid is provided. If task name contains 'Meeting' or 'Consulting'\nInput task name, hours, types( Meeting or Consulting), client id, user id, parent task uuid",
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "title": "= {{ $fromAI('Task_Name').trim() }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Client|relation",
+              "relationValue": [
+                "={{ $fromAI('client_id').trim() }}"
+              ]
+            },
+            {
+              "key": "Maker|people",
+              "peopleValue": "={{ $('Execute Workflow Trigger').first().json.query.user_id.trim() ?? null }}"
+            },
+            {
+              "key": "Status|status",
+              "statusValue": "={{ $fromAI('status') }}"
+            },
+            {
+              "key": "Hours Act.|number",
+              "numberValue": "={{ \n  $fromAI('maker_hours')?.trim() \n    ? parseFloat($fromAI('maker_hours')) \n    : null \n}}"
+            },
+            {
+              "key": "Parent-task|relation",
+              "relationValue": [
+                "={{ $('Execute Workflow Trigger').first().json.query.parent_task_uuid.trim() ?? null }}"
+              ]
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notionTool",
+      "typeVersion": 2.2,
+      "position": [
+        1140,
+        0
+      ],
+      "id": "****",
+      "name": "Create Sub Task",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "Get_Clients_list",
+        "description": "Use this first this tool to retrieve active clients list.\nAlways use this tool to retrieve actual ids of clients before creating tasks or subtasks.",
+        "workflowId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1500,
+        460
+      ],
+      "id": "****",
+      "name": "Get Clients list1"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to create tasks if parent_task_uuid is not provided after retrieving clients. If task name contains 'Meeting' or 'Consulting'\nInput task name, hours, types( Meeting or Consulting), client id, user id",
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "title": "= {{ $fromAI('Task_Name').trim() }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Client|relation",
+              "relationValue": [
+                "={{ $fromAI('client_id').trim() }}"
+              ]
+            },
+            {
+              "key": "Manager|people",
+              "peopleValue": "={{ $('Execute Workflow Trigger').first().json.query.user_id.trim() ?? null }}"
+            },
+            {
+              "key": "Status|status",
+              "statusValue": "={{ $fromAI('status') }}"
+            },
+            {
+              "key": "Manager Hours|number",
+              "numberValue": "={{ \n  $fromAI('manager_hours')?.trim() \n    ? parseFloat($fromAI('manager_hours')) \n    : null \n}}"
+            },
+            {
+              "key": "Due|date",
+              "date": "={{ $now.toISO({ suppressMilliseconds: true }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notionTool",
+      "typeVersion": 2.2,
+      "position": [
+        980,
+        480
+      ],
+      "id": "****",
+      "name": "Create Task1",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Insert Comment after Create Task or Create Sub Task tool if the comment is not empty, using the newly created task uuid",
+        "method": "POST",
+        "url": "https://api.notion.com/v1/comments",
+        "authentication": "****",
+        "nodeCredentialType": "notionApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"parent\": {\n    \"page_id\": \"{task_uuid}\"\n  },\n  \"rich_text\": [\n    {\n      \"text\": {\n        \"content\": \"{{ $('Execute Workflow Trigger').first().json.query.comment }}\"\n      }\n    }\n  ]\n}\n",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "task_uuid",
+              "description": "The uuid of the task created ",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        480
+      ],
+      "id": "****",
+      "name": "Insert Comment1",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "After calling client list tool, use this tool to create sub tasks if parent_task_uuid is provided. If task name contains 'Meeting' or 'Consulting'\nInput task name, hours, types( Meeting or Consulting), client id, user id, parent task uuid ",
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "title": "= {{ $fromAI('Task_Name').trim() }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Client|relation",
+              "relationValue": [
+                "={{ $fromAI('client_id').trim() }}"
+              ]
+            },
+            {
+              "key": "Manager|people",
+              "peopleValue": "={{ $('Execute Workflow Trigger').first().json.query.user_id.trim() ?? null }}"
+            },
+            {
+              "key": "Status|status",
+              "statusValue": "={{ $fromAI('status') }}"
+            },
+            {
+              "key": "Manager Hours|number",
+              "numberValue": "={{ \n  $fromAI('manager_hours')?.trim() \n    ? parseFloat($fromAI('manager_hours')) \n    : null \n}}"
+            },
+            {
+              "key": "Parent-task|relation",
+              "relationValue": [
+                "={{ $('Execute Workflow Trigger').first().json.query.parent_task_uuid.trim() ?? null }}"
+              ]
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notionTool",
+      "typeVersion": 2.2,
+      "position": [
+        1140,
+        480
+      ],
+      "id": "****",
+      "name": "Create Sub Task1",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "query": {
+            "task_name": "Subtask demo 7 manager",
+            "user_id": "****",
+            "date": "2025-06-08",
+            "client": "Internal",
+            "hours": 5,
+            "status": "Done",
+            "role": "Manager",
+            "comment": "",
+            "parent_task_uuid": "****"
+          },
+          "sessionId": "****"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "If Maker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xata": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Clients list": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Maker": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xata1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Comment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Sub Task": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Sub Task1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Comment1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Clients list1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "****",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "****"
+  },
+  "id": "****",
+  "tags": [
+    {
+      "createdAt": "2025-06-04T21:56:05.564Z",
+      "updatedAt": "2025-06-04T21:56:05.564Z",
+      "id": "****",
+      "name": "****"
+    },
+    {
+      "createdAt": "2025-06-08T13:28:42.076Z",
+      "updatedAt": "2025-06-08T13:28:42.076Z",
+      "id": "****",
+      "name": "****"
+    }
+  ]
+}
