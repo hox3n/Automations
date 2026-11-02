@@ -1,0 +1,1116 @@
+﻿{
+  "name": "****",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "****",
+      "name": "When clicking ‘Test workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        -440
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.fireflies.ai/graphql",
+        "authentication": "****",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query GetTranscripts($participantEmail: String!) { transcripts(participant_email: $participantEmail) { id title dateString host_email organizer_email meeting_attendees { email displayName } transcript_url audio_url duration summary { short_summary action_items keywords } } }\",\n  \"variables\": {\n    \"participantEmail\": \"{{ $json.client_email }}\"\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        40,
+        360
+      ],
+      "id": "****",
+      "name": "Transcription",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ !!$json[\"client_email\"] }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "****",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.fireflies.ai/graphql",
+        "authentication": "****",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query GetTranscripts { transcripts { id title dateString host_email organizer_email meeting_attendees { email displayName } transcript_url audio_url duration summary { short_summary action_items keywords } } }\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        320
+      ],
+      "id": "****",
+      "name": "Transcription1",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "id": "****",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1220,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.filter(item => {\n  const domain = item.json.domain;\n  const attendees = item.json.meeting_attendees || [];\n\n  if (domain) {\n    return attendees.some(p => p.email && p.email.endsWith(\"@\" + domain));\n  }\n\n  return true; \n});\n"
+      },
+      "id": "****",
+      "name": "Read transcripts data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        360
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const notes = items[0].json.notes || [];\nlet combined = `Below are the summaries and notes from multiple sales meetings. Generate a combined Handoff Report with the following sections:\nSales Conversations:\n- Their Goals\n- Biggest Problems\n- What we said we'd do\n- What they want from us\n- What was discussed\nMoving Forward:\n- Key talking points\n- Unclosed Loops from the Sales Process\n---\\n\\n`;\n\nnotes.forEach((note, i) => {\n  // Extract title from the body (look for \"Title:\" pattern with or without emoji)\n  const titleMatch = note.body.match(/(?:📞\\s*)?Title:\\s*(.+)/i);\n  const title = titleMatch ? titleMatch[1].trim() : `Meeting ${i + 1}`;\n  \n  // Extract date from the body (look for \"Date:\" pattern with or without emoji)\n  const dateMatch = note.body.match(/(?:📅\\s*)?Date:\\s*(.+)/i);\n  const date = dateMatch ? dateMatch[1].trim() : '';\n  \n  // Extract summary from the body (look for \"Summary:\" section with or without emoji)\n  const summaryMatch = note.body.match(/(?:✏️\\s*)?Summary:\\s*([\\s\\S]*?)(?=(?:📝|🔗|\\*\\*|Action Items:|Recording URL:|Transcript URL:|$))/i);\n  const summary = summaryMatch ? summaryMatch[1].trim() : \"No summary available.\";\n  \n  // Extract action items from the body (look for \"Action Items:\" section with or without emoji)\n  const actionMatch = note.body.match(/(?:📝\\s*)?Action Items:\\s*([\\s\\S]*?)(?=🔗|Recording URL:|Transcript URL:|$)/i);\n  const actions = actionMatch ? actionMatch[1].trim() : \"No action items available.\";\n  \n  combined += `📝 Meeting Title: ${title}\\n`;\n  if (date) {\n    combined += `📅 Date: ${date}\\n`;\n  }\n  combined += `📋 Summary:\\n${summary}\\n`;\n  combined += `✅ Action Items:\\n${actions}\\n`;\n  combined += `---\\n\\n`;\n});\n\nreturn [\n  {\n    json: {\n      full_transcript_text: combined\n    }\n  }\n];"
+      },
+      "id": "****",
+      "name": "Preprocess transcripts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcripts = items.map(item => item.json);\n\nlet combined = `Below are the summaries and notes from multiple sales meetings. Generate a combined Handoff Report with the following sections:\n\nSales Conversations:\n- Their Goals\n- Biggest Problems\n- What we said we’d do\n- What they want from us\n- What was discussed\n\nMoving Forward:\n- Key talking points\n- Unclosed Loops from the Sales Process\n\n---\\n\\n`;\n\ntranscripts.forEach((t, i) => {\n  const title = t.title || `Meeting ${i + 1}`;\n  const summary = t.summary.short_summary;\n  const actions = t.summary.action_items;\n\n  combined += `📝 Meeting Title: ${title}\\n`;\n  combined += `📋 Summary:\\n${summary}\\n`;\n  combined += `✅ Action Items:\\n${actions}\\n`;\n  combined += `---\\n\\n`;\n});\n\nreturn [\n  {\n    json: {\n      full_transcript_text: combined\n    }\n  }\n];\n"
+      },
+      "id": "****",
+      "name": "Preprocess transcripts1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Sales Assistant AI. Based on the following meeting transcripts data from several sales meetings with the client, generate a structured Handoff Report using **only** properly formatted markdown.\n\n## Required Output Format\n\nYour response must follow this exact markdown structure with no additional formatting, symbols, or text:\n\n# Sales Handoff Report\n\n## Sales Conversations\n\n### Their Goals\n[Content here]\n\n### Biggest Problems\n[Content here]\n\n### What we said we'd do\n[Content here]\n\n### What they want from us\n[Content here]\n\n### What was discussed\n[Content here]\n\n## Moving Forward\n\n### Key talking points\n[Content here]\n\n### Unclosed Loops from the Sales Process\n[Content here]\n\n\n## Instructions\n\n1. **Analyze the preprocessed transcription data:** {{ $json.body }}\n\n2. **Output Requirements:**\n   - Use **only** standard markdown formatting (headers, lists, text)\n   - Follow the exact template structure above\n   - No additional sections, summaries, or explanations\n   - No special symbols, decorative elements, or extra formatting\n   - No introductory or concluding text outside the template\n\n3. **Content Guidelines:**\n   - Extract relevant information for each section from the transcripts\n   - Use bullet points or numbered lists within sections as appropriate\n   - Keep content concise and actionable\n   - The number of bullet points within each section differs based on the content, from one up to ten\n\n4. **Exception Case:**\n   - If NONE of the meetings contain sales-related topics, return only:\n\n\n# Sales Handoff Report\nNo sales topics were discussed in the provided meeting transcripts.\n   \n\nGenerate the report using strictly the markdown format specified above."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.7,
+      "position": [
+        1840,
+        -440
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Sales Assistant AI. Based on the following meetings transcrips data from several sales meeting with the client, generate a structured Handoff Report with the following sections:\n\nSales Conversations:\n- Their Goals\n- Biggest Problems\n- What we said we’d do\n- What they want from us\n- What was discussed\n\nMoving Forward:\n- Key talking points\n- Unclosed Loops from the Sales Process\n\nHere are all the transcript data:\n{{ $json.full_transcript_text }}\n\n\nNOTE: If the NONE of the meetings belong to Sales topics, then return that there were no Sales topics discussed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "OpenAI1",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.7,
+      "position": [
+        2320,
+        380
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Webhook').item.json.body.channel_id }}",
+          "mode": "id"
+        },
+        "text": "=https://docs.google.com/document/d/{{ $('Create Google Docs').item.json.id }}/edit?usp=sharing",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3760,
+        -440
+      ],
+      "id": "****",
+      "name": "Slack",
+      "webhookId": "****",
+      "credentials": {
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// OPTION 1: Function Node for HTTP Request to Google Docs API\n// This creates the proper API request structure\n\n// Function to convert Markdown to Google Docs API requests\nfunction convertMarkdownToGoogleDocsRequests(markdownText, insertIndex = 1) {\n  const requests = [];\n  const lines = markdownText.split('\\n');\n  let currentIndex = insertIndex;\n  \n  for (let i = 0; i < lines.length; i++) {\n    const line = lines[i].trim();\n    \n    if (line === '') {\n      requests.push({\n        insertText: {\n          location: { index: currentIndex },\n          text: '\\n'\n        }\n      });\n      currentIndex += 1;\n      continue;\n    }\n    \n    // Check for headings\n    if (line.startsWith('#')) {\n      const headingMatch = line.match(/^(#{1,6})\\s+(.+)$/);\n      if (headingMatch) {\n        const headingLevel = headingMatch[1].length;\n        const headingText = headingMatch[2];\n        const headingStyle = `HEADING_${headingLevel}`;\n        \n        requests.push({\n          insertText: {\n            location: { index: currentIndex },\n            text: headingText + '\\n'\n          }\n        });\n        \n        requests.push({\n          updateParagraphStyle: {\n            range: {\n              startIndex: currentIndex,\n              endIndex: currentIndex + headingText.length\n            },\n            paragraphStyle: {\n              namedStyleType: headingStyle\n            },\n            fields: 'namedStyleType'\n          }\n        });\n        \n        currentIndex += headingText.length + 1;\n        continue;\n      }\n    }\n    \n    // Check for bullet points\n    if (line.startsWith('- ') || line.startsWith('* ')) {\n      const bulletText = line.substring(2);\n      \n      requests.push({\n        insertText: {\n          location: { index: currentIndex },\n          text: bulletText + '\\n'\n        }\n      });\n      \n      requests.push({\n        createParagraphBullets: {\n          range: {\n            startIndex: currentIndex,\n            endIndex: currentIndex + bulletText.length\n          },\n          bulletPreset: 'BULLET_DISC_CIRCLE_SQUARE'\n        }\n      });\n      \n      currentIndex += bulletText.length + 1;\n      continue;\n    }\n    \n    // Check for numbered lists\n    if (line.match(/^\\d+\\.\\s/)) {\n      const numberedText = line.replace(/^\\d+\\.\\s/, '');\n      \n      requests.push({\n        insertText: {\n          location: { index: currentIndex },\n          text: numberedText + '\\n'\n        }\n      });\n      \n      requests.push({\n        createParagraphBullets: {\n          range: {\n            startIndex: currentIndex,\n            endIndex: currentIndex + numberedText.length\n          },\n          bulletPreset: 'NUMBERED_DECIMAL_ALPHA_ROMAN'\n        }\n      });\n      \n      currentIndex += numberedText.length + 1;\n      continue;\n    }\n    \n    // Process regular text with inline formatting\n    const processedLine = processInlineFormatting(line, currentIndex);\n    \n    requests.push({\n      insertText: {\n        location: { index: currentIndex },\n        text: processedLine.text + '\\n'\n      }\n    });\n    \n    requests.push(...processedLine.formatRequests);\n    currentIndex += processedLine.text.length + 1;\n  }\n  \n  return requests;\n}\n\nfunction processInlineFormatting(text, startIndex) {\n  let processedText = text;\n  const formatRequests = [];\n  let offset = 0;\n  \n  // Process bold text\n  const boldMatches = [...text.matchAll(/(\\*\\*|__)(.*?)\\1/g)];\n  for (const match of boldMatches) {\n    const matchStart = match.index - offset;\n    const matchLength = match[2].length;\n    const actualStart = startIndex + matchStart;\n    \n    processedText = processedText.replace(match[0], match[2]);\n    offset += match[1].length * 2;\n    \n    formatRequests.push({\n      updateTextStyle: {\n        range: {\n          startIndex: actualStart,\n          endIndex: actualStart + matchLength\n        },\n        textStyle: { bold: true },\n        fields: 'bold'\n      }\n    });\n  }\n  \n  // Process italic text\n  const italicMatches = [...processedText.matchAll(/(?<!\\*)(\\*|_)(?!\\*)([^*_]+?)(?<!\\*)\\1(?!\\*)/g)];\n  for (const match of italicMatches) {\n    const matchStart = match.index;\n    const matchLength = match[2].length;\n    const actualStart = startIndex + matchStart;\n    \n    formatRequests.push({\n      updateTextStyle: {\n        range: {\n          startIndex: actualStart,\n          endIndex: actualStart + matchLength\n        },\n        textStyle: { italic: true },\n        fields: 'italic'\n      }\n    });\n    \n    processedText = processedText.replace(match[0], match[2]);\n  }\n  \n  return { text: processedText, formatRequests };\n}\n\n// MAIN EXECUTION\n// Replace 'markdown_content' with your actual field name\nconst markdownText = $('Get Content').first().json.content;\nconst documentId = $input.first().json.id;\n\n// Convert markdown to requests\nconst requests = convertMarkdownToGoogleDocsRequests(markdownText);\n\n// Return the API request body for HTTP Request node\nreturn [{\n  json: {\n    requests: requests,\n    document_id: documentId,\n    // For the HTTP Request node URL\n    url: `https://docs.googleapis.com/v1/documents/${documentId}:batchUpdate`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        -440
+      ],
+      "id": "****",
+      "name": "Convert Markdown to Requests"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "****",
+        "nodeCredentialType": "googleDocsOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "requests",
+              "value": "={{ $json.requests }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3180,
+        -440
+      ],
+      "id": "****",
+      "name": "Update Google Docs File",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('When clicking ‘Test workflow’').item.json.channel_id }}",
+          "mode": "id"
+        },
+        "text": "=https://docs.google.com/document/d/{{ $json.documentId }}/edit?usp=sharing",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3580,
+        380
+      ],
+      "id": "****",
+      "name": "Slack1",
+      "webhookId": "****",
+      "credentials": {
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// OPTION 1: Function Node for HTTP Request to Google Docs API\n// This creates the proper API request structure\n\n// Function to convert Markdown to Google Docs API requests\nfunction convertMarkdownToGoogleDocsRequests(markdownText, insertIndex = 1) {\n  const requests = [];\n  const lines = markdownText.split('\\n');\n  let currentIndex = insertIndex;\n  \n  for (let i = 0; i < lines.length; i++) {\n    const line = lines[i].trim();\n    \n    if (line === '') {\n      requests.push({\n        insertText: {\n          location: { index: currentIndex },\n          text: '\\n'\n        }\n      });\n      currentIndex += 1;\n      continue;\n    }\n    \n    // Check for headings\n    if (line.startsWith('#')) {\n      const headingMatch = line.match(/^(#{1,6})\\s+(.+)$/);\n      if (headingMatch) {\n        const headingLevel = headingMatch[1].length;\n        const headingText = headingMatch[2];\n        const headingStyle = `HEADING_${headingLevel}`;\n        \n        requests.push({\n          insertText: {\n            location: { index: currentIndex },\n            text: headingText + '\\n'\n          }\n        });\n        \n        requests.push({\n          updateParagraphStyle: {\n            range: {\n              startIndex: currentIndex,\n              endIndex: currentIndex + headingText.length\n            },\n            paragraphStyle: {\n              namedStyleType: headingStyle\n            },\n            fields: 'namedStyleType'\n          }\n        });\n        \n        currentIndex += headingText.length + 1;\n        continue;\n      }\n    }\n    \n    // Check for bullet points\n    if (line.startsWith('- ') || line.startsWith('* ')) {\n      const bulletText = line.substring(2);\n      \n      requests.push({\n        insertText: {\n          location: { index: currentIndex },\n          text: bulletText + '\\n'\n        }\n      });\n      \n      requests.push({\n        createParagraphBullets: {\n          range: {\n            startIndex: currentIndex,\n            endIndex: currentIndex + bulletText.length\n          },\n          bulletPreset: 'BULLET_DISC_CIRCLE_SQUARE'\n        }\n      });\n      \n      currentIndex += bulletText.length + 1;\n      continue;\n    }\n    \n    // Check for numbered lists\n    if (line.match(/^\\d+\\.\\s/)) {\n      const numberedText = line.replace(/^\\d+\\.\\s/, '');\n      \n      requests.push({\n        insertText: {\n          location: { index: currentIndex },\n          text: numberedText + '\\n'\n        }\n      });\n      \n      requests.push({\n        createParagraphBullets: {\n          range: {\n            startIndex: currentIndex,\n            endIndex: currentIndex + numberedText.length\n          },\n          bulletPreset: 'NUMBERED_DECIMAL_ALPHA_ROMAN'\n        }\n      });\n      \n      currentIndex += numberedText.length + 1;\n      continue;\n    }\n    \n    // Process regular text with inline formatting\n    const processedLine = processInlineFormatting(line, currentIndex);\n    \n    requests.push({\n      insertText: {\n        location: { index: currentIndex },\n        text: processedLine.text + '\\n'\n      }\n    });\n    \n    requests.push(...processedLine.formatRequests);\n    currentIndex += processedLine.text.length + 1;\n  }\n  \n  return requests;\n}\n\nfunction processInlineFormatting(text, startIndex) {\n  let processedText = text;\n  const formatRequests = [];\n  let offset = 0;\n  \n  // Process bold text\n  const boldMatches = [...text.matchAll(/(\\*\\*|__)(.*?)\\1/g)];\n  for (const match of boldMatches) {\n    const matchStart = match.index - offset;\n    const matchLength = match[2].length;\n    const actualStart = startIndex + matchStart;\n    \n    processedText = processedText.replace(match[0], match[2]);\n    offset += match[1].length * 2;\n    \n    formatRequests.push({\n      updateTextStyle: {\n        range: {\n          startIndex: actualStart,\n          endIndex: actualStart + matchLength\n        },\n        textStyle: { bold: true },\n        fields: 'bold'\n      }\n    });\n  }\n  \n  // Process italic text\n  const italicMatches = [...processedText.matchAll(/(?<!\\*)(\\*|_)(?!\\*)([^*_]+?)(?<!\\*)\\1(?!\\*)/g)];\n  for (const match of italicMatches) {\n    const matchStart = match.index;\n    const matchLength = match[2].length;\n    const actualStart = startIndex + matchStart;\n    \n    formatRequests.push({\n      updateTextStyle: {\n        range: {\n          startIndex: actualStart,\n          endIndex: actualStart + matchLength\n        },\n        textStyle: { italic: true },\n        fields: 'italic'\n      }\n    });\n    \n    processedText = processedText.replace(match[0], match[2]);\n  }\n  \n  return { text: processedText, formatRequests };\n}\n\n// MAIN EXECUTION\n// Replace 'markdown_content' with your actual field name\nconst markdownText = $('Get Content1').first().json.content;\nconst documentId = $input.first().json.id;\n\n// Convert markdown to requests\nconst requests = convertMarkdownToGoogleDocsRequests(markdownText);\n\n// Return the API request body for HTTP Request node\nreturn [{\n  json: {\n    requests: requests,\n    document_id: documentId,\n    // For the HTTP Request node URL\n    url: `https://docs.googleapis.com/v1/documents/${documentId}:batchUpdate`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3140,
+        380
+      ],
+      "id": "****",
+      "name": "Convert Markdown to Requests1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "****",
+        "nodeCredentialType": "googleDocsOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "requests",
+              "value": "={{ $json.requests }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        380
+      ],
+      "id": "****",
+      "name": "Update Google Docs File1",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "content",
+              "value": "={{ $json.message.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2340,
+        -440
+      ],
+      "id": "****",
+      "name": "Get Content"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "content",
+              "value": "={{ $json.message.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2680,
+        380
+      ],
+      "id": "****",
+      "name": "Get Content1"
+    },
+    {
+      "parameters": {
+        "folderId": "****",
+        "title": "=Handoff Report - {{ $('Webhook').item.json.body.client_name }}"
+      },
+      "id": "****",
+      "name": "Create Google Docs",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        2680,
+        -440
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "folderId": "****",
+        "title": "=Handoff Report - {{ $('When clicking ‘Test workflow’').item.json.client_name }}"
+      },
+      "id": "****",
+      "name": "Create Google Docs2",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        380
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Duplicates",
+        "height": 300,
+        "width": 1760
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2060,
+        280
+      ],
+      "id": "****",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "domain = _input.all()[0]['json']['client_domain'].lower().strip()\n\ntranscripts = _input.all()[0]['json']['data']['transcripts']\nresults = []\n\nfor transcript in transcripts:\n    attendees = transcript.get('meeting_attendees') or []\n    \n    for att in attendees:\n        email = att.get('email', '').lower().strip()\n        if domain in email:\n          results.append({ \"json\": transcript })\n          break  # Only one match needed per transcript\n\nreturn results\n"
+      },
+      "id": "****",
+      "name": "Read transcripts data from domain",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Connect Slack Bot and replace Slack channel with ID from Webhook ",
+        "height": 360,
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3640,
+        -640
+      ],
+      "id": "****",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Change Google Drive Folder to the production one and client name to name from Wehbook",
+        "height": 360,
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2580,
+        -620
+      ],
+      "id": "****",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Switch to Webhook to connect to Make Automation",
+        "height": 320,
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        -1040
+      ],
+      "id": "****",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "transcripts",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        320
+      ],
+      "id": "****",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "content": "DEPRECATED",
+        "height": 340,
+        "width": 2240
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        260
+      ],
+      "id": "****",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "data",
+              "value": "={{ $json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1820,
+        320
+      ],
+      "id": "****",
+      "name": "Reformating"
+    },
+    {
+      "parameters": {
+        "url": "=https://rest.gohighlevel.com/v1/contacts/{{ $json.body.client_id }}/notes/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "****"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        -440
+      ],
+      "id": "****",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "url": "=https://rest.gohighlevel.com/v1/pipelines/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "****"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -220,
+        320
+      ],
+      "id": "****",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.all();\n\nconst filteredNotes = inputData.map(item => {\n  const filtered_Notes = item.json.notes.filter(note => \n    note.body.includes('Attendees')\n  );\n  \n  return {\n    json: {\n      notes: filtered_Notes\n    }\n  };\n});\n\nreturn filteredNotes;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        -440
+      ],
+      "id": "****",
+      "name": "Filter in Call notes"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "=body"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -440
+      ],
+      "id": "****",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "notes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -440
+      ],
+      "id": "****",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "****",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -180
+      ],
+      "id": "****",
+      "name": "Webhook",
+      "webhookId": "****"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Create Google Docs').item.json.id }}/permissions",
+        "authentication": "****",
+        "nodeCredentialType": "googleDocsOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "role",
+              "value": "reader"
+            },
+            {
+              "name": "type",
+              "value": "domain"
+            },
+            {
+              "name": "domain",
+              "value": "****"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3420,
+        -440
+      ],
+      "id": "****",
+      "name": "drive permissions",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "When clicking ‘Test workflow’": [
+      {
+        "json": {
+          "client_name": "****",
+          "client_email": "****",
+          "client_id": "****",
+          "client_domain": "****",
+          "channel_id": "****",
+          "opportunity_id": "****",
+          "pipeline_Id": "****"
+        }
+      }
+    ],
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "****",
+            "user-agent": "Make/production",
+            "content-length": "82",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "****",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "****",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "traceparent": "****",
+            "tracestate": "****",
+            "x-datadog-parent-id": "****",
+            "x-datadog-sampling-priority": "0",
+            "x-datadog-tags": "****",
+            "x-datadog-trace-id": "****",
+            "x-forwarded-for": "****",
+            "x-forwarded-host": "****",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "****",
+            "x-is-trusted": "yes",
+            "x-real-ip": "****"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "channel_id": "****",
+            "client_id": "****",
+            "opportunity_id": "****"
+          },
+          "webhookUrl": "****",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        []
+      ]
+    },
+    "Transcription": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Transcription1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Transcription1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Read transcripts data from domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read transcripts data": {
+      "main": [
+        []
+      ]
+    },
+    "Preprocess transcripts": {
+      "main": [
+        []
+      ]
+    },
+    "Preprocess transcripts1": {
+      "main": [
+        [
+          {
+            "node": "OpenAI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Get Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI1": {
+      "main": [
+        [
+          {
+            "node": "Get Content1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Markdown to Requests": {
+      "main": [
+        [
+          {
+            "node": "Update Google Docs File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Google Docs File": {
+      "main": [
+        [
+          {
+            "node": "drive permissions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Markdown to Requests1": {
+      "main": [
+        [
+          {
+            "node": "Update Google Docs File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Google Docs File1": {
+      "main": [
+        [
+          {
+            "node": "Slack1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Content": {
+      "main": [
+        [
+          {
+            "node": "Create Google Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Content1": {
+      "main": [
+        [
+          {
+            "node": "Create Google Docs2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Docs": {
+      "main": [
+        [
+          {
+            "node": "Convert Markdown to Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Docs2": {
+      "main": [
+        [
+          {
+            "node": "Convert Markdown to Requests1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read transcripts data from domain": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Reformating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reformating": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Filter in Call notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter in Call notes": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "drive permissions": {
+      "main": [
+        [
+          {
+            "node": "Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "****",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "****"
+  },
+  "id": "****",
+  "tags": []
+}
