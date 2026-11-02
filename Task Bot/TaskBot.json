@@ -1,0 +1,1637 @@
+﻿{
+  "name": "****",
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Get Slack Message').item.json.body.event.ts }}"
+      },
+      "id": "****",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1840,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "****",
+        "options": {}
+      },
+      "id": "****",
+      "name": "Get Slack Message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -4920,
+        -200
+      ],
+      "webhookId": "****"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "url_verification",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "****",
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "event_callback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Switch For First Use",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -4680,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.body.event.thread_ts }}",
+              "rightValue": "={{ undefined  }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Check if new request",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.event.type }}",
+                    "rightValue": "=app_mention",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "****"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Check for Mention",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -4500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "challenge",
+              "value": "={{ $json.body.challenge }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "For First Time USE",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4380,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "****"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an intelligent assistant designed to help users create and manage tasks.\n\nHere is the user's request: \"{{ $json.message[0] }}\"\n\nInstruction: \nExtract the most relevant keyword that represent the core of the task. Choose a noun or action phrases that best describe the task's subject or goal.\n\nOutput Format:\nOne keyword\n\nExample: \nUser Input: \"Find me a book to read\"\nKeyword to return: \"book\"",
+              "role": "assistant"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Agent to Extract Keyword",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.7,
+      "position": [
+        -3080,
+        -200
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "keyword",
+              "value": "={{ $json.message.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Save Keyword",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2660,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "****"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an AI assistant, operating in the role of a seasoned project manager, helping users with task management and business operations.\n\nHere is the user's request: \"{{ $('Aggregate').item.json.message[0] }}\"\nYour job is to check for similar tasks in Notion:\n\n## Confirmation Process with Similarity Check:\n\n1. **First**,  use the \"getNotionDB\" tool to retrieve existing tasks from the Notion database.\n2. **Then**, Extract task names from the response (look for \"name\", \"Name\", \"title\", or \"Title\" fields in each item) \n3. **Then**, compare the title of the proposed task with the task names returned by the formatting tool\n4. **If similar tasks are found**: Reply with \"⚠️ There is a similar task in Notion with the title '[EXISTING_TASK_TITLE]'. Do you still want to create this task?\"\n5. **If no similar tasks are found**: Reply strictly with \"No similar tasks are found.\"\n\n## Similarity Assessment Guidelines:\n- Compare the core meaning and purpose of task titles\n- Consider synonyms and related concepts (e.g., \"lead generation\" vs \"finding new business leads\")\n- Look for overlapping objectives or outcomes\n- Be reasonably strict - flag tasks that have 90%+ conceptual overlap\n- Return the similar tasks and their url-s.",
+              "role": "assistant"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Agent to Check for Similar Tasks",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.7,
+      "position": [
+        -2380,
+        -200
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Requested Task: \"{{ $('Aggregate').item.json.message[0] }}\", Similarity: \"{{ $json.message.content }}\"",
+        "options": {
+          "systemMessage": "=You are an intelligent task assistant designed to structure unformatted user requests into a standardized task creation template. Your goal is to analyze the user’s message, infer and populate structured template with relevant and realistic information. You must then return the **fully filled** task template and ask the user to approve or reject its creation.\n\n## Context:\n- The user will send a natural language request to create a task.\n- You will analyze it and return a **populated version** of the template via slack send message tool.\n  \nTemplate: \n\n\"\nHere is the proposed task based on your request:\n\n\n### Task Title\n\n- [Populate this section with a title suitable for the task]\n\n### Description:\n\n- [Populate this section with the intended result or objective.]\n\n### Steps:\n\n- [ ] [Populate with actionable steps needed to complete the task.]\n\n### Success Criteria:\n\n- [ ] [List measurable conditions that define success.]\n\n### Access + Dependencies:\n\n- [List any tools, people, or resources needed.]\n\n### Risks + How to Mitigate:\n\n- [List potential risks and how they can be addressed.]\n\n\n-> {{ $json.message.content }}\n\nWould you like to Create, Modify or Cancel the proposed task?\n\".\n\n\n## Instructions:\n1. Read the user’s input carefully.\n2. Populate each section of the template with clear and concise content based on the context of input.\n3. If a section cannot be reasonably filled due to lack of context, make up realistic information.\n4. Return a **populated version** of the aforementioned structured template.\n5. At the end of the populated template, attach the similarity text and then the question whether the user would like to create, modify or cancel the proposed task, as is shown in the template.\n6. Maintain a professional and helpful tone. Do not add apologies or unnecessary explanations.\n\n## Output Format\nAlways return natural text that follows the template and not JSON."
+        }
+      },
+      "id": "****",
+      "name": "Agent to Propose Task",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -1980,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://slack.com/api/conversations.replies",
+        "authentication": "****",
+        "nodeCredentialType": "slackApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $('Get Slack Message').item.json.body.event.channel }}"
+            },
+            {
+              "name": "ts",
+              "value": "={{ $('Get Slack Message').item.json.body.event.thread_ts }}"
+            },
+            {
+              "name": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "****"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Get Conversation History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3480,
+        580
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "****",
+          "name": "****"
+        },
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "{{ $json.body.event.text }}",
+              "value": "={{ $json.body.event.text.replace(/^<@[^>]+>\\s*/, '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Reformat Incoming Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3760,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const httpOutput = $input.first().json;\nconst webhookData = $('Get Slack Message').first().json;\nconst allMessages = httpOutput.messages;\n\n// Safety check\nif (!Array.isArray(allMessages) || allMessages.length < 2) {\n  throw new Error(\"Not enough messages to extract context.\");\n}\n\n// Step 1: Determine user ID from first message\nconst userId = allMessages[0].user;\n\n// Step 2: Select messages\nlet selectedMessages = [];\n// Always include first interaction\nselectedMessages.push(allMessages[0], allMessages[1]);\n\n// Add last 10 messages, avoiding duplicates\nconst lastMessages = allMessages.slice(-10);\nfor (const msg of lastMessages) {\n  if (!selectedMessages.includes(msg)) {\n    selectedMessages.push(msg);\n  }\n}\n\n// Step 3: Assign roles and clean user messages\nconst openaiMessages = selectedMessages.map(msg => {\n  const isUser = msg.user === userId;\n  const rawText = msg.text || \"\";\n  const cleanedText = isUser\n    // Remove @bot mentions or Slack mentions like <@U12345>\n    ? rawText.replace(/<@[^>]+>|@\\w+/g, \"\").trim()\n    : rawText;\n  return {\n    role: isUser ? 'user' : 'assistant',\n    content: cleanedText\n  };\n});\n\n// Get current user input (clean from mentions) - ADDED\nconst currentInput = (webhookData.event && webhookData.event.text) \n  ? webhookData.event.text.replace(/<@[^>]+>|@\\w+/g, \"\").trim()\n  : \"\";\n\n// Convert OpenAI messages to text format for the OpenAI node - ADDED\nlet conversationText = \"Previous conversation:\\n\";\nopenaiMessages.forEach(msg => {\n  conversationText += `${msg.role}: ${msg.content}\\n`;\n});\nconversationText += `\\nuser: ${currentInput}\\n\\nassistant:`;\n\n// Final output\nreturn [{\n  json: {\n    httpOutput,\n    webhookData,\n    openaiMessages,\n    currentUserInput: currentInput,\n    conversationPrompt: conversationText\n  }\n}];"
+      },
+      "id": "****",
+      "name": "Reformat Data for OpenAI Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3180,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "****"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an AI assistant, operating in the role of a seasoned project manager, helping users with task management and business operations.\n\nYour job is to handle two kinds of inputs:\n\n1. Confirmation or cancellation commands (one‐word or short phrases), such as:\nCreate command:\nInputs like \"yes\", \"confirm\", \"create task\" indicate confirmation.\n→ Return the following array:\nTask Created Successfully!, <The populated task template>\n\nCancel command:\nInputs like \"no\", \"cancel task\", \"delete\", \"remove\", \"drop task\" indicate cancellation.\n→ Return the following array:\nCreation of Task is Cancelled!, \"\"\n\n2. Task modification or feedback:\nIf the user's message is not a short confirm/cancel phrase, treat it as feedback or a modification request for the provided populated task template.\n\nUse the full conversation context to update the task while preserving the original structure:\n\nDescription\n\nSteps\n\nSuccess Criteria\n\nAccess + Dependencies\n\nRisks + How to Mitigate\n\nOutput the modified task with:\nHere is the modified task:, <Modified task template>\n\nSpecial Handling for Double Confirmation:\nIf the user confirms again after a similarity warning, such as saying \"yes, create it anyway,\" proceed without checking again and return:\nTask Created Successfully, <The populated task template>\n\nSpecial Handling for Duplicated creations:\nIf the user has already asked for the task to be created, and the task has been created and the user has received confirmation of task creation, make sure to repeat the message of the task creation to the user\n\nContext Handling:\nPrevious conversation context: {{ $json.conversationPrompt }}\nCurrent user input: (the last message given by the role 'user')\n\n\nNote: The <The populated task template> or <Modified task template> must be fully structured based on the original format unless the user explicitly asks for a section to be removed.",
+              "role": "assistant"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Agent to Reply to User",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.7,
+      "position": [
+        -2920,
+        580
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.message.content }}",
+              "rightValue": "Creation of Task is Cancelled!",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Check for Cancellation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2560,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.message.content }}",
+              "rightValue": "Task Created Successfully!",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "****",
+              "leftValue": "={{$json.message.content }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Check for Approval or Modification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2340,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.message.content;\n\nlet task = content.trim();\n\nconst index = task.indexOf('#');\nif (index !== -1) {\n  task = task.substring(index).trim();\n}\n\nreturn {\n  json: {\n    task\n  }\n};"
+      },
+      "id": "****",
+      "name": "Reformat Data for Modification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1960,
+        940
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let content = $input.first().json.message.content;\n\ncontent = content.replace(/^\\*_(.*?)_\\*$/gm, '### $1').replace(/^• :ballot_box_with_check: (.*$)/gm, '- [ ] $1').replace(/^• :white_check_mark: (.*$)/gim, '- [x] $1').replace(/^• (.*$)/gm, '- $1');\n\nlet task = content.trim();\nconst index = task.indexOf('#');\nif (index !== -1) {\n  task = task.substring(index).trim();\n}\n\nconst lines = task.split('\\n');\nconst title = lines.slice(2, 3).join().replace(\"- \", \"\").trim();\nconst taskBody = lines.slice(4).join('\\n').trim();\n\nreturn [\n  {\n    title,\n    task: taskBody\n  }\n];"
+      },
+      "id": "****",
+      "name": "Reformat Data for Approval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2160,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "title": "={{ $json.title }}",
+        "blockUi": {
+          "blockValues": [
+            {
+              "textContent": "={{ $json.task }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Create Notion Task",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1140,
+        600
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "****",
+        "nodeCredentialType": "slackApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $('Get Slack Message').item.json.body.event.channel }}"
+            },
+            {
+              "name": "text",
+              "value": "=Task Created Successfully! \n\nURL: {{ $json.url }}"
+            },
+            {
+              "name": "thread_ts",
+              "value": "={{ $('Get Slack Message').item.json.body.event.event_ts }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Reply for Task Creation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -940,
+        600
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "****",
+        "nodeCredentialType": "slackApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $('Get Slack Message').item.json.body.event.channel }}"
+            },
+            {
+              "name": "text",
+              "value": "=Creation of task is cancelled!"
+            },
+            {
+              "name": "thread_ts",
+              "value": "={{ $('Get Slack Message').item.json.body.event.event_ts }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Reply for Task Cancellation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1620,
+        320
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "****",
+        "nodeCredentialType": "slackApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $('Get Slack Message').item.json.body.event.channel }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.task }}\n\nWould you like to create the task?"
+            },
+            {
+              "name": "thread_ts",
+              "value": "={{ $('Get Slack Message').item.json.body.event.event_ts }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Reply for Task Modification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1740,
+        940
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "****",
+        "nodeCredentialType": "slackApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $('Get Slack Message').item.json.body.event.channel }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "name": "thread_ts",
+              "value": "={{ $('Get Slack Message').item.json.body.event.ts }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "Reply for Initial Task Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -820,
+        -200
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "****"
+        },
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Status|status",
+              "condition": "does_not_equal",
+              "statusValue": "Done"
+            },
+            {
+              "key": "Task name|title",
+              "condition": "contains",
+              "titleValue": "={{ $json.keyword }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "****",
+      "name": "getNotionDB",
+      "type": "n8n-nodes-base.notionTool",
+      "typeVersion": 2.2,
+      "position": [
+        -2360,
+        20
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "****",
+      "name": "OpenAI Model 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -2000,
+        40
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## -> Get New Slack Message -> Check for Case 1 or Case 2",
+        "height": 620,
+        "width": 960,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5020,
+        -420
+      ],
+      "id": "****",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Case 1: Handle Slack Channel Message           -> Agent 1- Generate Keyword                  -> Agent 2- Check for Similarity                      -> Agent 3- Create new Task based on Template                   -> Create a new thread & Present task to user\n",
+        "height": 620,
+        "width": 2280,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3860,
+        -340
+      ],
+      "id": "****",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Case 2: Handle Reply Thread Message           -> Get Conversation History                  -> Agent 4: Create Response for user\n",
+        "height": 340,
+        "width": 1240,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -4080,
+        460
+      ],
+      "id": "****",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Case 2: Scenario 1 -> Present acknowledgement of task cancellation\n",
+        "height": 260,
+        "width": 920,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2360,
+        240
+      ],
+      "id": "****",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Case 2: Scenario 2 -> Create new Task in Notion -> Present task creation\n",
+        "height": 260,
+        "width": 600,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2360,
+        540
+      ],
+      "id": "****",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Case 2: Scenario 3 -> Present modified task\n",
+        "height": 280,
+        "width": 920
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2360,
+        840
+      ],
+      "id": "****",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Check for Agent Response Type",
+        "height": 480,
+        "width": 400,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2800,
+        460
+      ],
+      "id": "****",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "url": "https://****/webhook/****",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskTitle",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "taskContent",
+              "value": "={{ $json.task }}"
+            },
+            {
+              "name": "channel",
+              "value": "={{ $('Get Slack Message').item.json.body.event.channel }}"
+            },
+            {
+              "name": "thread_ts",
+              "value": "={{ $('Get Slack Message').item.json.body.event.event_ts }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1980,
+        640
+      ],
+      "id": "****",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "content": "## DEPRECATED\n\n\n",
+        "height": 300,
+        "width": 580,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1260,
+        520
+      ],
+      "id": "****",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "let content = $input.first().json.output\n\ncontent = content\n  .replace(/^### (.*$)/gm, '*_$1_*')                              // Convert ### to *bold*\n  .replace(/^- \\[ \\] (.*$)/gm, '• :ballot_box_with_check: $1')     // Unchecked task\n  .replace(/^- \\[x\\] (.*$)/gim, '• :white_check_mark: $1')      // Checked task\n  .replace(/^- (.*$)/gm, '• $1');                               // Dash list to bullets\n\nreturn {\n  json: {\n    output: content\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1180,
+        -200
+      ],
+      "id": "****",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.body.event.attachments[0].message_blocks[0].message.blocks[0].elements[0].elements[0].text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4040,
+        -220
+      ],
+      "id": "****",
+      "name": "Check If Forwarded Messsage exists"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "****",
+              "leftValue": "={{ $json.body.event.blocks[0].elements[0].elements[1].text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3800,
+        -200
+      ],
+      "id": "****",
+      "name": "Check if user message also exists"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "message",
+              "value": "={{ $json.body.event.blocks[0].elements[0].elements[1].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3580,
+        100
+      ],
+      "id": "****",
+      "name": "Forward Only User Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "message",
+              "value": "={{ $json.body.event.attachments[0].message_blocks[0].message.blocks[0].elements[0].elements[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3580,
+        -80
+      ],
+      "id": "****",
+      "name": "Format Only Forwarded Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "****",
+              "name": "message",
+              "value": "=User Message:\"{{ $json.body.event.blocks[0].elements[0].elements[1].text }}\" & Forwarded Message (Additional Context): \"{{ $json.body.event.attachments[0].message_blocks[0].message.blocks[0].elements[0].elements[0].text }}\"",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3580,
+        -260
+      ],
+      "id": "****",
+      "name": "Format User + Forwarded Message"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "message"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -3300,
+        -200
+      ],
+      "id": "****",
+      "name": "Aggregate"
+    }
+  ],
+  "pinData": {
+    "Get Slack Message": [
+      {
+        "json": {
+          "headers": {
+            "host": "****",
+            "user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+            "content-length": "1827",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "****",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "****",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "x-forwarded-for": "****",
+            "x-forwarded-host": "****",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "****",
+            "x-is-trusted": "yes",
+            "x-real-ip": "****",
+            "x-slack-request-timestamp": "1750799812",
+            "x-slack-signature": "****"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "token": "****",
+            "team_id": "****",
+            "api_app_id": "****",
+            "event": {
+              "user": "****",
+              "type": "app_mention",
+              "ts": "****",
+              "text": "<@****>",
+              "team": "****",
+              "attachments": [
+                {
+                  "ts": "****",
+                  "author_id": "****",
+                  "channel_id": "****",
+                  "channel_team": "****",
+                  "is_msg_unfurl": true,
+                  "message_blocks": [
+                    {
+                      "team": "****",
+                      "channel": "****",
+                      "ts": "****",
+                      "message": {
+                        "blocks": [
+                          {
+                            "type": "rich_text",
+                            "block_id": "****",
+                            "elements": [
+                              {
+                                "type": "rich_text_section",
+                                "elements": [
+                                  {
+                                    "type": "text",
+                                    "text": "create a task about developing a new ai agent"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ],
+                  "color": "D0D0D0",
+                  "from_url": "****",
+                  "is_share": true,
+                  "fallback": "****",
+                  "text": "create a task about developing a new ai agent",
+                  "author_name": "****",
+                  "author_link": "****",
+                  "author_icon": "****",
+                  "author_subname": "****",
+                  "mrkdwn_in": [
+                    "text"
+                  ],
+                  "footer": "Slack Conversation"
+                }
+              ],
+              "blocks": [
+                {
+                  "type": "rich_text",
+                  "block_id": "****",
+                  "elements": [
+                    {
+                      "type": "rich_text_section",
+                      "elements": [
+                        {
+                          "type": "user",
+                          "user_id": "****"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "channel": "****",
+              "event_ts": "****"
+            },
+            "type": "event_callback",
+            "event_id": "****",
+            "event_time": 1750799811,
+            "authorizations": [
+              {
+                "enterprise_id": null,
+                "team_id": "****",
+                "user_id": "****",
+                "is_bot": true,
+                "is_enterprise_install": false
+              }
+            ],
+            "is_ext_shared_channel": false,
+            "event_context": "****"
+          },
+          "webhookUrl": "****",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agent to Propose Task",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Switch For First Use",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch For First Use": {
+      "main": [
+        [
+          {
+            "node": "For First Time USE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check for Mention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if new request": {
+      "main": [
+        [
+          {
+            "node": "Check If Forwarded Messsage exists",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reformat Incoming Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Mention": {
+      "main": [
+        [
+          {
+            "node": "Check if new request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent to Extract Keyword": {
+      "main": [
+        [
+          {
+            "node": "Save Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Keyword": {
+      "main": [
+        [
+          {
+            "node": "Agent to Check for Similar Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent to Check for Similar Tasks": {
+      "main": [
+        [
+          {
+            "node": "Agent to Propose Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent to Propose Task": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Conversation History": {
+      "main": [
+        [
+          {
+            "node": "Reformat Data for OpenAI Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reformat Incoming Data": {
+      "main": [
+        [
+          {
+            "node": "Get Conversation History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reformat Data for OpenAI Input": {
+      "main": [
+        [
+          {
+            "node": "Agent to Reply to User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent to Reply to User": {
+      "main": [
+        [
+          {
+            "node": "Check for Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Reply for Task Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check for Approval or Modification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Approval or Modification": {
+      "main": [
+        [
+          {
+            "node": "Reformat Data for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reformat Data for Modification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reformat Data for Modification": {
+      "main": [
+        [
+          {
+            "node": "Reply for Task Modification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reformat Data for Approval": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Notion Task": {
+      "main": [
+        [
+          {
+            "node": "Reply for Task Creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getNotionDB": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agent to Check for Similar Tasks",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent to Propose Task",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Reply for Initial Task Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Forwarded Messsage exists": {
+      "main": [
+        [
+          {
+            "node": "Check if user message also exists",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Forward Only User Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if user message also exists": {
+      "main": [
+        [
+          {
+            "node": "Format User + Forwarded Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Only Forwarded Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forward Only User Message": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Only Forwarded Message": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format User + Forwarded Message": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Agent to Extract Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "****",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "****"
+  },
+  "id": "****",
+  "tags": []
+}

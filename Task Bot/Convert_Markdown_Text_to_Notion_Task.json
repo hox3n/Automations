@@ -1,0 +1,228 @@
+{
+  "name": "****",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        -240
+      ],
+      "id": "****",
+      "name": "When chat message received",
+      "webhookId": "****"
+    },
+    {
+      "parameters": {
+        "path": "****",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ],
+      "id": "****",
+      "name": "Get data from taskbot",
+      "webhookId": "****"
+    },
+    {
+      "parameters": {
+        "jsCode": "const markdownText = $input.first().json.query.taskContent; // Вхідний текст Markdown\nconst lines = markdownText.split('\\n');\nlet blocks = []; // Масив для всіх блоків\n\nlines.forEach(line => {\n  if (line.startsWith('###')) {\n    blocks.push({\n      \"type\": \"heading_1\",\n      \"heading_1\": {\n        \"rich_text\": [{\n          \"text\": {\n            \"content\": line.replace('###', '').trim()\n          }\n        }]\n      }\n    });\n  } else if (line.startsWith('- [ ]')) {\n    blocks.push({\n      \"type\": \"to_do\",\n      \"to_do\": {\n        \"rich_text\": [{\n          \"text\": {\n            \"content\": line.replace('- [ ]', '').trim()\n          }\n        }],\n        \"checked\": false\n      }\n    });\n  } else if (line.startsWith('-')) {\n    blocks.push({\n      \"type\": \"bulleted_list_item\",\n      \"bulleted_list_item\": {\n        \"rich_text\": [{\n          \"text\": {\n            \"content\": line.replace('-', '').trim()\n          }\n        }]\n      }\n    });\n  }\n});\n\n// Повертаємо масив блоків як одну змінну\nreturn { blocks };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "****",
+      "name": "Convert Markdown to JSON"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "****",
+          "mode": "list",
+          "cachedResultName": "****",
+          "cachedResultUrl": "https://www.notion.so/****"
+        },
+        "title": "={{ $('Get data from taskbot').item.json.query.taskTitle }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "****",
+      "name": "Create task",
+      "credentials": {
+        "notionApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.notion.com/v1/blocks/{{ $json.id }}/children ",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "****"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "children",
+              "value": "={{ $('Convert Markdown to JSON').item.json.blocks }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "****",
+      "name": "Add task content"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "****",
+        "nodeCredentialType": "slackApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "={{ $('Get data from taskbot').item.json.query.channel }}"
+            },
+            {
+              "name": "text",
+              "value": "=Task Created Successfully!   \nURL: {{ $('Create task').item.json.url }}"
+            },
+            {
+              "name": "thread_ts",
+              "value": "={{ $('Get data from taskbot').item.json.query.thread_ts }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "****",
+      "name": "Reply for Task Creation",
+      "credentials": {
+        "slackApi": {
+          "id": "****",
+          "name": "****"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        []
+      ]
+    },
+    "Get data from taskbot": {
+      "main": [
+        [
+          {
+            "node": "Convert Markdown to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Markdown to JSON": {
+      "main": [
+        [
+          {
+            "node": "Create task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create task": {
+      "main": [
+        [
+          {
+            "node": "Add task content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add task content": {
+      "main": [
+        [
+          {
+            "node": "Reply for Task Creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "****",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "****"
+  },
+  "id": "****",
+  "tags": []
+}
